@@ -23,9 +23,27 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun AcompanhamentoScreen(
+    codigo: String = "LLA-1048",
+    maquina: String = "Máquina 01",
+    servico: String = "Lavagem e secagem",
+    estado: String = "Em funcionamento",
+    valor: Double = 32.0,
+    duracaoMin: Int = 70,
+    decorridoMin: Int = 28,
+    terminoPrevisto: String = "Hoje, às 10:23",
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {}
 ) {
+    val decorrido = decorridoMin.coerceIn(0, maxOf(duracaoMin, 0))
+    val restante = maxOf(duracaoMin - decorrido, 0)
+    val progresso = if (duracaoMin > 0) decorrido.toFloat() / duracaoMin else 0f
+    val porcentagem = (progresso * 100).toInt()
+    val textoAgora = when {
+        restante == 0 -> "Ciclo concluído - $decorrido min decorridos"
+        servico.startsWith("secagem", ignoreCase = true) -> "Secando agora - $decorrido min decorridos"
+        else -> "Lavando agora - $decorrido min decorridos"
+    }
+
     // Cores base
     val backgroundColor = Color(0xFFFAFAFA)
     val primaryPurple = Color(0xFF673AB7)
@@ -124,7 +142,7 @@ fun AcompanhamentoScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Pedido LLA-1048 - Máquina 01",
+                text = "Pedido $codigo - $maquina",
                 color = textGrey,
                 fontSize = 14.sp
             )
@@ -154,9 +172,9 @@ fun AcompanhamentoScreen(
                         ) {
                             Icon(Icons.Outlined.Sync, contentDescription = null, tint = primaryPurple, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Em funcionamento", color = primaryPurple, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(text = estado, color = primaryPurple, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
-                        Text(text = "Máquina 01", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textDark)
+                        Text(text = maquina, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textDark)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -170,22 +188,22 @@ fun AcompanhamentoScreen(
                             strokeWidth = 12.dp,
                         )
                         CircularProgressIndicator(
-                            progress = { 0.4f },
+                            progress = { progresso },
                             modifier = Modifier.fillMaxSize(),
                             color = primaryPurple,
                             strokeWidth = 12.dp,
                             strokeCap = StrokeCap.Round
                         )
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "42 min", fontWeight = FontWeight.Bold, fontSize = 32.sp, color = textDark)
-                            Text(text = "restante de 70 min", fontSize = 11.sp, color = textGrey)
+                            Text(text = "$restante min", fontWeight = FontWeight.Bold, fontSize = 32.sp, color = textDark)
+                            Text(text = "restante de $duracaoMin min", fontSize = 11.sp, color = textGrey)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "40% concluído", fontSize = 12.sp, color = primaryPurple, fontWeight = FontWeight.Bold)
+                            Text(text = "$porcentagem% concluído", fontSize = 12.sp, color = primaryPurple, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text(text = "Lavando agora - 28 min decorridos", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = textDark)
+                    Text(text = textoAgora, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = textDark)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Barra de Etapas (Lavagem / Secagem)
@@ -208,7 +226,7 @@ fun AcompanhamentoScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Checks de Confirmação
-                    CheckmarkItem("Pagamento confirmado", "R$ 32,00 recebidos via Pix.")
+                    CheckmarkItem("Pagamento confirmado", "${reais(valor)} recebidos.")
                     Spacer(modifier = Modifier.height(12.dp))
                     CheckmarkItem(
                         "Comando de início confirmado pela máquina",
@@ -225,13 +243,13 @@ fun AcompanhamentoScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    DetalheRowAcompanhamento("Serviço contratado", "Lavagem e secagem")
+                    DetalheRowAcompanhamento("Serviço contratado", servico)
                     Spacer(modifier = Modifier.height(12.dp))
                     DetalheRowAcompanhamento("Insumos", "Sabão e amaciante\nincluídos")
                     Spacer(modifier = Modifier.height(12.dp))
-                    DetalheRowAcompanhamento("Duração estimada", "70 min")
+                    DetalheRowAcompanhamento("Duração estimada", "$duracaoMin min")
                     Spacer(modifier = Modifier.height(12.dp))
-                    DetalheRowAcompanhamento("Término previsto", "Hoje, às 10:23")
+                    DetalheRowAcompanhamento("Término previsto", terminoPrevisto)
                 }
             }
 

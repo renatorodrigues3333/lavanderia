@@ -17,6 +17,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Emulador: 10.0.2.2 aponta para o computador. Celular físico: use o IP do Mac na rede Wi-Fi.
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/\"")
     }
 
     buildTypes {
@@ -33,6 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

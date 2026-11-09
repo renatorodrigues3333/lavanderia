@@ -11,10 +11,11 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
+    // Definido em app/build.gradle.kts (buildConfigField "API_BASE_URL").
     // Emulador do Android Studio: 10.0.2.2 aponta para o seu computador.
     // Celular físico: troque pelo IP do Mac na rede Wi-Fi,
     // por exemplo "http://192.168.0.10:8000/api/"
-    const val BASE_URL = "http://10.0.2.2:8000/api/"
+    val BASE_URL: String = BuildConfig.API_BASE_URL
 
     @Volatile
     private var instancia: ApiService? = null

@@ -4,6 +4,8 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 
 interface ApiService {
 
@@ -19,6 +21,9 @@ interface ApiService {
     @GET("me")
     suspend fun me(): Response<UsuarioApi>
 
+    @PUT("me")
+    suspend fun atualizarPerfil(@Body body: AtualizarPerfilRequest): Response<AuthResponse>
+
     @GET("maquinas")
     suspend fun maquinas(): Response<List<MaquinaApi>>
 
@@ -30,4 +35,8 @@ interface ApiService {
 
     @GET("utilizacoes")
     suspend fun utilizacoes(): Response<List<UtilizacaoApi>>
+
+    /** Paga (demonstrativo), inicia o ciclo e ocupa a máquina. */
+    @POST("utilizacoes/{id}/pagar")
+    suspend fun pagar(@Path("id") id: Int, @Body body: PagamentoRequest): Response<MensagemResponse>
 }

@@ -20,8 +20,90 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     var erro by mutableStateOf<String?>(null)
         private set
 
+    /** Dados completos de quem está logado (vem de GET /me). */
+    var usuario by mutableStateOf<UsuarioApi?>(null)
+        private set
+
     val logado: Boolean get() = sessao.logado
-    val nome: String get() = sessao.nome
+    val nome: String get() = usuario?.nome ?: sessao.nome
+    val email: String get() = usuario?.email ?: sessao.email
+
+    var salvandoPerfil by mutableStateOf(false)
+        private set
+
+    var erroPerfil by mutableStateOf<String?>(null)
+        private set
+
+    fun limparErroPerfil() {
+        erroPerfil = null
+    }
+
+    /** Envia as alterações do perfil (PUT /me). [novaSenha] vazia mantém a senha atual. */
+    fun atualizarPerfil(
+        nome: String,
+        email: String,
+        telefone: String,
+        cpf: String,
+        senhaAtual: String,
+        novaSenha: String,
+        aoExpirar: () -> Unit,
+        aoConcluir: () -> Unit
+    ) {
+        if (salvandoPerfil) return
+        salvandoPerfil = true
+        erroPerfil = null
+
+        viewModelScope.launch {
+            try {
+                val resposta = api.atualizarPerfil(
+                    AtualizarPerfilRequest(
+                        nome = nome.trim(),
+                        email = email.trim().lowercase(),
+                        telefone = telefone,
+                        cpf = cpf,
+                        senha_atual = senhaAtual,
+                        nova_senha = novaSenha.ifEmpty { null }
+                    )
+                )
+                val atualizado = resposta.body()?.usuario
+                val token = sessao.token
+                when {
+                    resposta.code() == 401 -> {
+                        sessao.limpar()
+                        usuario = null
+                        aoExpirar()
+                    }
+                    resposta.isSuccessful && atualizado != null && token != null -> {
+                        usuario = atualizado
+                        sessao.salvar(token, atualizado.nome, atualizado.email)
+                        aoConcluir()
+                    }
+                    else -> erroPerfil = ApiClient.mensagemErro(resposta)
+                }
+            } catch (_: Exception) {
+                erroPerfil = ApiClient.mensagemFalha()
+            }
+            salvandoPerfil = false
+        }
+    }
+
+    /** Atualiza os dados do perfil. Se o token não valer mais, limpa a sessão e avisa. */
+    fun carregarPerfil(aoExpirar: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resposta = api.me()
+                if (resposta.code() == 401) {
+                    sessao.limpar()
+                    usuario = null
+                    aoExpirar()
+                } else if (resposta.isSuccessful) {
+                    usuario = resposta.body()
+                }
+            } catch (_: Exception) {
+                // mantém os dados salvos na sessão
+            }
+        }
+    }
 
     fun limparErro() {
         erro = null
@@ -63,6 +145,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             } catch (_: Exception) {
             }
             sessao.limpar()
+            usuario = null
             erro = null
             aoConcluir()
         }
@@ -83,6 +166,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
                 if (resposta.isSuccessful && token != null && usuario != null) {
                     sessao.salvar(token, usuario.nome, usuario.email)
+                    this@AuthViewModel.usuario = usuario
                     aoConcluir()
                 } else {
                     erro = ApiClient.mensagemErro(resposta)

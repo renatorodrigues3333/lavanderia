@@ -23,10 +23,22 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun HistoricoScreen(
+    pedidos: List<UtilizacaoApi> = pedidosExemplo,
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {}
 ) {
     var filtroSelecionado by remember { mutableStateOf("Todos") }
+
+    val pedidosFiltrados = pedidos.filter { pedido ->
+        when (filtroSelecionado) {
+            "Em andamento" -> categoriaPedido(pedido.estado) == CategoriaPedido.EM_ANDAMENTO
+            "Concluídos" -> categoriaPedido(pedido.estado) == CategoriaPedido.CONCLUIDO
+            "Não pagos" -> categoriaPedido(pedido.estado) == CategoriaPedido.NAO_PAGO
+            else -> true
+        }
+    }
+    // Agrupa por mês, mantendo a ordem (mais recentes primeiro)
+    val porMes = pedidosFiltrados.groupBy { pedido -> dataApi(pedido.criado_em)?.let { mesAno(it) } ?: "Sem data" }
 
     // Cores base
     val backgroundColor = Color(0xFFFAFAFA)
@@ -191,61 +203,24 @@ fun HistoricoScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Cabeçalho do Mês
-            Text(text = "Outubro de 2026", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textDark)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "4 registros · valores e dados fictícios", fontSize = 12.sp, color = textGrey)
+            if (porMes.isEmpty()) {
+                Text(text = "Nenhum pedido", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "0 registros", fontSize = 12.sp, color = textGrey)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            porMes.forEach { (mes, lista) ->
+                // Cabeçalho do Mês
+                Text(text = mes, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = if (lista.size == 1) "1 registro" else "${lista.size} registros", fontSize = 12.sp, color = textGrey)
 
-            // Lista de Pedidos
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Pedido 1 (Atual)
-            PedidoCard(
-                data = "18 out 2026 - 9h12", id = "LLA-1048", maquina = "Máquina 01",
-                valor = "R$ 32,00", subtituloValor = "valor pago", servico = "Lavagem e secagem - 70 min",
-                tags = listOf(
-                    TagData("Em funcionamento", Color(0xFF673AB7), Color(0xFFF3E5F5), Icons.Outlined.Sync),
-                    TagData("Pagamento confirmado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle)
-                ),
-                descricao = "Pedido atual - Sabão e amaciante incluídos. Início confirmado pela máquina. Restam 42 min de 70 min (40%).",
-                textoBotaoPrincipal = "Ver comprovante", iconeBotaoPrincipal = Icons.Outlined.ReceiptLong
-            )
-
-            // Pedido 2 (Concluído)
-            PedidoCard(
-                data = "14 out 2026 - 15h20", id = "LLA-1026", maquina = "Máquina 04",
-                valor = "R$ 32,00", subtituloValor = "valor pago", servico = "Lavagem e secagem - 70 min",
-                tags = listOf(
-                    TagData("Serviço finalizado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle),
-                    TagData("Pagamento confirmado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle)
-                ),
-                textoBotaoPrincipal = "Ver comprovante", iconeBotaoPrincipal = Icons.Outlined.ReceiptLong
-            )
-
-            // Pedido 3 (Concluído simples)
-            PedidoCard(
-                data = "07 out 2026 - 8h10", id = "LLA-0992", maquina = "Máquina 02",
-                valor = "R$ 18,00", subtituloValor = "valor pago", servico = "Lavagem - 35 min",
-                tags = listOf(
-                    TagData("Serviço finalizado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle),
-                    TagData("Pagamento confirmado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle)
-                ),
-                textoBotaoPrincipal = "Ver comprovante", iconeBotaoPrincipal = Icons.Outlined.ReceiptLong
-            )
-
-            // Pedido 4 (Recusado/Tentativa)
-            PedidoCard(
-                data = "02 out 2026 - 10h10", id = "LLA-0831", maquina = "Máquina 03",
-                valor = "R$ 14,00", subtituloValor = "tentativa - não pago", servico = "Secagem - 35 min",
-                isError = true,
-                tags = listOf(
-                    TagData("Não iniciado", Color(0xFF757575), Color(0xFFF5F5F5), Icons.Outlined.NotInterested),
-                    TagData("Pagamento recusado", Color(0xFFC62828), Color(0xFFFFEBEE), Icons.Outlined.Cancel)
-                ),
-                descricao = "Valor pago R$ 0,00. A tentativa foi recusada e nenhum ciclo foi iniciado. Não é um pagamento realizado.",
-                textoBotaoPrincipal = "Ver detalhe da tentativa", iconeBotaoPrincipal = Icons.Outlined.Info
-            )
+                // Lista de Pedidos
+                lista.forEach { pedido -> PedidoCardApi(pedido) }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -261,6 +236,54 @@ fun HistoricoScreen(
 }
 
 // Modelos e Componentes Auxiliares
+enum class CategoriaPedido { EM_ANDAMENTO, CONCLUIDO, NAO_PAGO }
+
+fun categoriaPedido(estado: String): CategoriaPedido {
+    val e = estado.lowercase()
+    return when {
+        "conclu" in e || "finaliz" in e -> CategoriaPedido.CONCLUIDO
+        "cancel" in e || "recus" in e || "falh" in e -> CategoriaPedido.NAO_PAGO
+        else -> CategoriaPedido.EM_ANDAMENTO
+    }
+}
+
+/** Monta o cartão do histórico a partir de um pedido da API. */
+@Composable
+fun PedidoCardApi(pedido: UtilizacaoApi) {
+    val categoria = categoriaPedido(pedido.estado)
+    val aguardando = "pend" in pedido.estado.lowercase() || "aguard" in pedido.estado.lowercase()
+
+    val tag = when {
+        categoria == CategoriaPedido.CONCLUIDO ->
+            TagData("Serviço finalizado", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle)
+        categoria == CategoriaPedido.NAO_PAGO ->
+            TagData(estadoTexto(pedido.estado), Color(0xFFC62828), Color(0xFFFFEBEE), Icons.Outlined.Cancel)
+        aguardando ->
+            TagData(estadoTexto(pedido.estado), Color(0xFFE65100), Color(0xFFFFF3E0), Icons.Outlined.HourglassEmpty)
+        else ->
+            TagData(estadoTexto(pedido.estado), Color(0xFF673AB7), Color(0xFFF3E5F5), Icons.Outlined.Sync)
+    }
+    val tags = if (categoria == CategoriaPedido.NAO_PAGO) {
+        listOf(TagData("Não iniciado", Color(0xFF757575), Color(0xFFF5F5F5), Icons.Outlined.NotInterested), tag)
+    } else {
+        listOf(tag)
+    }
+
+    PedidoCard(
+        data = dataApi(pedido.criado_em)?.let { dataHistorico(it) } ?: "",
+        id = codigoPedido(pedido.id),
+        maquina = pedido.maquina,
+        valor = reais(pedido.valor_total),
+        subtituloValor = if (categoria == CategoriaPedido.NAO_PAGO) "não pago" else "valor do pedido",
+        servico = "${pedido.servico} - ${pedido.duracao_estimada} min",
+        tags = tags,
+        descricao = if (categoria == CategoriaPedido.NAO_PAGO) "Nenhum ciclo foi iniciado para este pedido." else null,
+        textoBotaoPrincipal = if (categoria == CategoriaPedido.NAO_PAGO) "Ver detalhe da tentativa" else "Ver comprovante",
+        iconeBotaoPrincipal = if (categoria == CategoriaPedido.NAO_PAGO) Icons.Outlined.Info else Icons.Outlined.ReceiptLong,
+        isError = categoria == CategoriaPedido.NAO_PAGO
+    )
+}
+
 data class TagData(val texto: String, val corTexto: Color, val corFundo: Color, val icone: androidx.compose.ui.graphics.vector.ImageVector)
 
 @Composable

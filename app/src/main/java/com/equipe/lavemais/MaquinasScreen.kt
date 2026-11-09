@@ -32,11 +32,27 @@ enum class MachineStatus(val texto: String, val corTexto: Color, val corFundo: C
 
 @Composable
 fun MaquinasScreen(
+    maquinas: List<MaquinaApi> = maquinasExemplo,
+    servicos: List<ServicoApi> = servicosExemplo,
+    maquinaSelecionadaId: Int? = maquinas.firstOrNull { it.status() == MachineStatus.LIVRE }?.id,
+    onSelecionar: (MaquinaApi) -> Unit = {},
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {},
     onContinuar: () -> Unit = {}
 ) {
-    var maquinaSelecionada by remember { mutableStateOf("Máquina 01") }
+    val maquinaSelecionada = maquinas.firstOrNull { it.id == maquinaSelecionadaId }?.identificacao ?: ""
+
+    // Informações dos serviços, iguais para todas as máquinas
+    val textoServicos = servicos.joinToString(" • ") { it.nome }
+    val precoMinimo = servicos.minOfOrNull { it.preco }
+    val tempoMin = servicos.minOfOrNull { it.duracao_estimada }
+    val tempoMax = servicos.maxOfOrNull { it.duracao_estimada }
+    val textoPreco = precoMinimo?.let { "A partir de ${reais(it)}" } ?: ""
+    val textoTempo = when {
+        tempoMin == null || tempoMax == null -> ""
+        tempoMin == tempoMax -> "$tempoMin min"
+        else -> "$tempoMin a $tempoMax min"
+    }
 
     // Cores base
     val backgroundColor = Color(0xFFFAFAFA)
@@ -162,9 +178,9 @@ fun MaquinasScreen(
 
             // Resumo de Status (Chips)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip("3 Livre", MachineStatus.LIVRE)
-                StatusChip("2 Em uso", MachineStatus.EM_USO)
-                StatusChip("1 Fora de serviço", MachineStatus.FORA_SERVICO)
+                StatusChip("${maquinas.count { it.status() == MachineStatus.LIVRE }} Livre", MachineStatus.LIVRE)
+                StatusChip("${maquinas.count { it.status() == MachineStatus.EM_USO }} Em uso", MachineStatus.EM_USO)
+                StatusChip("${maquinas.count { it.status() == MachineStatus.FORA_SERVICO }} Fora de serviço", MachineStatus.FORA_SERVICO)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -194,33 +210,22 @@ fun MaquinasScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Lista de Máquinas
-            MachineCard(
-                nome = "Máquina 01", capacidade = "12 kg", status = MachineStatus.LIVRE,
-                servicos = "Lavagem • Secagem • Lavagem e secagem", preco = "A partir de R$ 14,00", tempo = "35 a 70 min",
-                isSelected = maquinaSelecionada == "Máquina 01", onSelect = { maquinaSelecionada = "Máquina 01" }
-            )
-            MachineCard(
-                nome = "Máquina 02", capacidade = "10 kg", status = MachineStatus.LIVRE,
-                servicos = "Lavagem", preco = "A partir de R$ 10,00", tempo = "35 min",
-                isSelected = maquinaSelecionada == "Máquina 02", onSelect = { maquinaSelecionada = "Máquina 02" }
-            )
-            MachineCard(
-                nome = "Máquina 03", capacidade = "12 kg", status = MachineStatus.LIVRE,
-                servicos = "Secagem", preco = "A partir de R$ 14,00", tempo = "45 min",
-                isSelected = maquinaSelecionada == "Máquina 03", onSelect = { maquinaSelecionada = "Máquina 03" }
-            )
-            MachineCard(
-                nome = "Máquina 04", capacidade = "17 kg", status = MachineStatus.EM_USO,
-                servicos = "Lavagem e secagem", preco = "A partir de R$ 32,00", tempo = "70 min", extraInfo = "Previsão de liberação: 15 min"
-            )
-            MachineCard(
-                nome = "Máquina 05", capacidade = "10 kg", status = MachineStatus.EM_USO,
-                servicos = "Lavagem", preco = "A partir de R$ 10,00", tempo = "35 min", extraInfo = "Previsão de liberação: 10 min"
-            )
-            MachineCard(
-                nome = "Máquina 06", capacidade = "10 kg", status = MachineStatus.FORA_SERVICO,
-                servicos = "Secagem", preco = "A partir de R$ 10,00", tempo = "40 min", extraInfo = "Em manutenção. Sem previsão de retorno."
-            )
+            maquinas.forEach { maquina ->
+                val status = maquina.status()
+                MachineCard(
+                    nome = maquina.identificacao,
+                    capacidade = kg(maquina.capacidade_kg),
+                    status = status,
+                    servicos = textoServicos,
+                    preco = textoPreco,
+                    tempo = textoTempo,
+                    extraInfo = if (status == MachineStatus.FORA_SERVICO) {
+                        maquina.motivo_bloqueio ?: "Em manutenção. Sem previsão de retorno."
+                    } else null,
+                    isSelected = maquina.id == maquinaSelecionadaId,
+                    onSelect = { onSelecionar(maquina) }
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -25,11 +25,17 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ServicoScreen(
+    maquina: MaquinaApi? = maquinasExemplo.first(),
+    servicos: List<ServicoApi> = servicosExemplo,
+    servicoSelecionadoId: Int? = servicoPadrao(servicos)?.id,
+    onSelecionar: (ServicoApi) -> Unit = {},
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {},
     onContinuar: () -> Unit = {}
 ) {
-    var servicoSelecionado by remember { mutableStateOf("Lavagem e secagem") }
+    val servicoSelecionado = servicos.firstOrNull { it.id == servicoSelecionadoId }
+    val nomeMaquina = maquina?.identificacao ?: ""
+    val capacidade = maquina?.let { kg(it.capacidade_kg) } ?: ""
 
     // Cores base
     val backgroundColor = Color(0xFFFAFAFA)
@@ -60,7 +66,7 @@ fun ServicoScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(text = "Tempo estimado", color = textGrey, fontSize = 14.sp)
-                            Text(text = "70 min", color = textDark, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(text = servicoSelecionado?.let { "${it.duracao_estimada} min" } ?: "", color = textDark, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
@@ -69,7 +75,7 @@ fun ServicoScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(text = "Total com insumos", color = textGrey, fontSize = 14.sp)
-                            Text(text = "R$ 32,00", color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Text(text = servicoSelecionado?.let { reais(it.preco) } ?: "", color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -200,9 +206,9 @@ fun ServicoScreen(
                         Icon(Icons.Outlined.LocalLaundryService, contentDescription = null, tint = primaryPurple, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "Máquina 01", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textDark)
+                            Text(text = nomeMaquina, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textDark)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "Capacidade máxima: 12 kg", fontSize = 12.sp, color = textGrey)
+                            Text(text = "Capacidade máxima: $capacidade", fontSize = 12.sp, color = textGrey)
                         }
                     }
                     Row(
@@ -223,18 +229,15 @@ fun ServicoScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Opções de Serviço
-            ServiceOptionCard(
-                titulo = "Lavagem", info = "35 min · R$ 18,00", icone = Icons.Outlined.WaterDrop,
-                selecionado = servicoSelecionado == "Lavagem", onClick = { servicoSelecionado = "Lavagem" }
-            )
-            ServiceOptionCard(
-                titulo = "Secagem", info = "35 min · R$ 14,00", icone = Icons.Outlined.Air,
-                selecionado = servicoSelecionado == "Secagem", onClick = { servicoSelecionado = "Secagem" }
-            )
-            ServiceOptionCard(
-                titulo = "Lavagem e secagem", info = "70 min · R$ 32,00", icone = Icons.Outlined.LocalLaundryService,
-                selecionado = servicoSelecionado == "Lavagem e secagem", onClick = { servicoSelecionado = "Lavagem e secagem" }
-            )
+            servicos.forEach { servico ->
+                ServiceOptionCard(
+                    titulo = servico.nome,
+                    info = "${servico.duracao_estimada} min · ${reais(servico.preco)}",
+                    icone = iconeServico(servico),
+                    selecionado = servico.id == servicoSelecionadoId,
+                    onClick = { onSelecionar(servico) }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(text = "Cuidado na medida certa", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textDark)
@@ -281,7 +284,7 @@ fun ServicoScreen(
                         Text(text = "Antes de continuar", color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Confira as etiquetas, esvazie os bolsos e respeite o limite de 12 kg da Máquina 01.",
+                            text = "Confira as etiquetas, esvazie os bolsos e respeite o limite de $capacidade da $nomeMaquina.",
                             color = primaryPurple, fontSize = 12.sp, lineHeight = 16.sp
                         )
                     }

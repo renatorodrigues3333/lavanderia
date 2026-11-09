@@ -12,6 +12,16 @@ data class RegisterRequest(
     val senha: String
 )
 
+/** nova_senha = null mantém a senha atual (o Gson não envia campos null). */
+data class AtualizarPerfilRequest(
+    val nome: String,
+    val email: String,
+    val telefone: String,
+    val cpf: String,
+    val senha_atual: String,
+    val nova_senha: String? = null
+)
+
 data class UsuarioApi(
     val id: Int = 0,
     val nome: String = "",
@@ -47,6 +57,9 @@ data class ServicoApi(
 
 data class NovaUtilizacaoRequest(val maquina_id: Int, val servico_id: Int)
 
+/** metodo: "pix" ou "cartao" */
+data class PagamentoRequest(val metodo: String)
+
 data class UtilizacaoApi(
     val id: Int = 0,
     val estado: String = "",
@@ -54,7 +67,11 @@ data class UtilizacaoApi(
     val criado_em: String? = null,
     val maquina: String = "",
     val servico: String = "",
-    val duracao_estimada: Int = 0
+    val duracao_estimada: Int = 0,
+    val inicio_real: String? = null,
+    val fim_real: String? = null,
+    /** Segundos desde o início do ciclo, calculados pelo servidor (null se ainda não começou). */
+    val decorrido_seg: Long? = null
 )
 
 data class MensagemResponse(val mensagem: String? = null, val id: Int? = null)

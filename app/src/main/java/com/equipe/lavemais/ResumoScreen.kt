@@ -22,10 +22,19 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ResumoScreen(
+    maquina: MaquinaApi? = maquinasExemplo.first(),
+    servico: ServicoApi? = servicoPadrao(servicosExemplo),
+    enviando: Boolean = false,
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {},
     onConfirmar: () -> Unit = {}
 ) {
+    val nomeMaquina = maquina?.identificacao ?: ""
+    val capacidade = maquina?.let { kg(it.capacidade_kg) } ?: ""
+    val nomeServico = servico?.nome ?: ""
+    val preco = servico?.let { reais(it.preco) } ?: ""
+    val duracao = servico?.let { "${it.duracao_estimada} min" } ?: ""
+
     // Cores base
     val backgroundColor = Color(0xFFFAFAFA)
     val primaryPurple = Color(0xFF673AB7)
@@ -156,9 +165,9 @@ fun ResumoScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text(text = "Máquina 01", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textDark)
+                            Text(text = nomeMaquina, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textDark)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "Até 12 kg · Jardim Aurora", fontSize = 12.sp, color = textGrey)
+                            Text(text = "Até $capacidade · Jardim Aurora", fontSize = 12.sp, color = textGrey)
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 modifier = Modifier
@@ -166,9 +175,9 @@ fun ResumoScreen(
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Outlined.LocalLaundryService, contentDescription = null, tint = primaryPurple, modifier = Modifier.size(12.dp))
+                                Icon(iconeServico(servico), contentDescription = null, tint = primaryPurple, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Lavagem e secagem", color = primaryPurple, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text(text = nomeServico, color = primaryPurple, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -176,9 +185,7 @@ fun ResumoScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Linhas de Detalhe
-                    DetalheRow(label = "Lavagem", value = "R$ 18,00")
-                    Spacer(modifier = Modifier.height(12.dp))
-                    DetalheRow(label = "Secagem", value = "R$ 14,00")
+                    DetalheRow(label = nomeServico, value = preco)
                     Spacer(modifier = Modifier.height(12.dp))
                     DetalheRow(label = "Sabão - padrão 30 ml", value = "Incluído")
                     Spacer(modifier = Modifier.height(12.dp))
@@ -188,7 +195,7 @@ fun ResumoScreen(
                     HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    DetalheRow(label = "Duração estimada", value = "70 min", isBold = true)
+                    DetalheRow(label = "Duração estimada", value = duracao, isBold = true)
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -196,12 +203,12 @@ fun ResumoScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "Total do pedido", color = textGrey, fontSize = 14.sp)
-                        Text(text = "R$ 32,00", color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(text = preco, color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "Pedido demonstrativo LLA-1045. Nenhuma cobrança foi realizada nesta etapa.",
+                        text = "Nenhuma cobrança foi realizada nesta etapa.",
                         color = textGrey,
                         fontSize = 11.sp,
                         lineHeight = 16.sp
@@ -264,6 +271,7 @@ fun ResumoScreen(
             // Botão Confirmar e Pagar
             Button(
                 onClick = onConfirmar,
+                enabled = !enviando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

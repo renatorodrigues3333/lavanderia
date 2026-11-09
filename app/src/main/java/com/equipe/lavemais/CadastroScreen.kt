@@ -359,7 +359,7 @@ fun CadastroScreen(
 
 /** Rótulo + campo + mensagem de erro/dica, no mesmo estilo do layout original. */
 @Composable
-private fun CampoCadastro(
+internal fun CampoCadastro(
     rotulo: String,
     valor: String,
     aoMudar: (String) -> Unit,

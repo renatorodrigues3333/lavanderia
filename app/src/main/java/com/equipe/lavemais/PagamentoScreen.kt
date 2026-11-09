@@ -25,9 +25,14 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PagamentoScreen(
+    codigo: String = "LLA-1048",
+    valor: Double = 32.0,
+    descricao: String = "Máquina 01 · Lavagem e secagem · 70 min",
+    enviando: Boolean = false,
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {},
-    onContinuar: () -> Unit = {}
+    /** Recebe o método para a API: "pix" ou "cartao". */
+    onContinuar: (metodo: String) -> Unit = {}
 ) {
     var metodoSelecionado by remember { mutableStateOf("Pix") }
 
@@ -152,11 +157,11 @@ fun PagamentoScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Pedido LLA-1048", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = textDark)
-                        Text(text = "R$ 32,00", color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(text = "Pedido $codigo", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = textDark)
+                        Text(text = reais(valor), color = primaryPurple, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "Máquina 01 · Lavagem e secagem · 70 min", fontSize = 12.sp, color = textGrey)
+                    Text(text = descricao, fontSize = 12.sp, color = textGrey)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = "Sabão e amaciante incluídos.", fontSize = 12.sp, color = textGrey)
 
@@ -276,7 +281,8 @@ fun PagamentoScreen(
 
             // Botão Verificar Pagamento
             Button(
-                onClick = onContinuar,
+                onClick = { onContinuar(if (metodoSelecionado == "Pix") "pix" else "cartao") },
+                enabled = !enviando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
