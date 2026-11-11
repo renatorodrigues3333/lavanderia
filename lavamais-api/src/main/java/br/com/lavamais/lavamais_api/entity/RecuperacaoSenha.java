@@ -53,6 +53,7 @@ public class RecuperacaoSenha {
     public LocalDateTime getUtilizadoEm() { return utilizadoEm; }
     public void setUtilizadoEm(LocalDateTime utilizadoEm) { this.utilizadoEm = utilizadoEm; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
     public LocalDateTime getConcluidoEm() { return concluidoEm; }
     public void setConcluidoEm(LocalDateTime concluidoEm) { this.concluidoEm = concluidoEm; }
 }

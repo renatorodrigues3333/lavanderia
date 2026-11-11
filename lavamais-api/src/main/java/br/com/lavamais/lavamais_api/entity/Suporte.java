@@ -48,6 +48,7 @@ public class Suporte {
     public EstadoSuporte getEstado() { return estado; }
     public void setEstado(EstadoSuporte estado) { this.estado = estado; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
     public LocalDateTime getResolvidoEm() { return resolvidoEm; }
     public void setResolvidoEm(LocalDateTime resolvidoEm) { this.resolvidoEm = resolvidoEm; }
 }

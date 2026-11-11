@@ -40,6 +40,7 @@ public class MensagemSuporte {
     public String getConteudo() { return conteudo; }
     public void setConteudo(String conteudo) { this.conteudo = conteudo; }
     public LocalDateTime getEnviadaEm() { return enviadaEm; }
+    public void setEnviadaEm(LocalDateTime enviadaEm) { this.enviadaEm = enviadaEm; }
     public LocalDateTime getLidaEm() { return lidaEm; }
     public void setLidaEm(LocalDateTime lidaEm) { this.lidaEm = lidaEm; }
 }

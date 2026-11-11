@@ -56,4 +56,5 @@ public class Notificacao {
     public LocalDateTime getLidoEm() { return lidoEm; }
     public void setLidoEm(LocalDateTime lidoEm) { this.lidoEm = lidoEm; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
 }

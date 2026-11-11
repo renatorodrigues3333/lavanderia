@@ -60,6 +60,7 @@ public class Pagamento {
     public EstadoPagamento getEstado() { return estado; }
     public void setEstado(EstadoPagamento estado) { this.estado = estado; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
     public LocalDateTime getPagoEm() { return pagoEm; }
     public void setPagoEm(LocalDateTime pagoEm) { this.pagoEm = pagoEm; }
 }

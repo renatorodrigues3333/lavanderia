@@ -47,4 +47,5 @@ public class Auditoria {
     public String getDetalhes() { return detalhes; }
     public void setDetalhes(String detalhes) { this.detalhes = detalhes; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public void setCriadoEm(LocalDateTime criadoEm) { this.criadoEm = criadoEm; }
 }
