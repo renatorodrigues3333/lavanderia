@@ -39,9 +39,10 @@ public class UtilizacaoController {
         return service.buscar(id);
     }
 
+    /** Cliente: lista as próprias (o parâmetro é ignorado). Administrador: filtra por usuarioId ou lista todas. */
     @GetMapping
-    public List<UtilizacaoResponse> listarPorUsuario(@RequestParam Integer usuarioId) {
-        return service.listarPorUsuario(usuarioId);
+    public List<UtilizacaoResponse> listar(@RequestParam(required = false) Integer usuarioId) {
+        return service.listar(usuarioId);
     }
 
     @PatchMapping("/{id}/iniciar")

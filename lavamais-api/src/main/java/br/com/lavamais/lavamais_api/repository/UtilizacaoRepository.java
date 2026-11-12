@@ -8,4 +8,5 @@ import br.com.lavamais.lavamais_api.entity.Utilizacao;
 
 public interface UtilizacaoRepository extends JpaRepository<Utilizacao, Integer> {
     List<Utilizacao> findByUsuarioIdOrderByCriadoEmDesc(Integer usuarioId);
+    List<Utilizacao> findAllByOrderByCriadoEmDesc();
 }

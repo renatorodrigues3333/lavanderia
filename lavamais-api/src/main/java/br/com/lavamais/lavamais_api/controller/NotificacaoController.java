@@ -34,9 +34,10 @@ public class NotificacaoController {
         return service.criar(req);
     }
 
+    /** Cliente: lista as suas e as gerais (o parâmetro é ignorado). Administrador: filtra por usuarioId ou lista todas. */
     @GetMapping
-    public List<NotificacaoResponse> listarPorUsuario(@RequestParam Integer usuarioId) {
-        return service.listarPorUsuario(usuarioId);
+    public List<NotificacaoResponse> listar(@RequestParam(required = false) Integer usuarioId) {
+        return service.listar(usuarioId);
     }
 
     @PatchMapping("/{id}/lida")

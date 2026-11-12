@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.lavamais.lavamais_api.config.SessaoUsuario;
 import br.com.lavamais.lavamais_api.dto.UtilizacaoRequest;
 import br.com.lavamais.lavamais_api.dto.UtilizacaoResponse;
 import br.com.lavamais.lavamais_api.entity.EstadoMaquina;
@@ -25,6 +26,7 @@ import br.com.lavamais.lavamais_api.repository.UtilizacaoRepository;
 /**
  * Fluxo: criar (pendente) -> pagamento aprovado -> iniciar (em_andamento) -> concluir (concluida).
  * Uma utilização pendente também pode ser cancelada.
+ * O cliente só enxerga e mexe nas próprias utilizações; o administrador, em todas.
  */
 @Service
 @Transactional
@@ -55,7 +57,10 @@ public class UtilizacaoService {
     }
 
     public UtilizacaoResponse criar(UtilizacaoRequest req) {
-        if (!usuarioRepository.existsById(req.usuarioId())) {
+        Integer usuarioId = SessaoUsuario.admin() && req.usuarioId() != null
+                ? req.usuarioId()
+                : SessaoUsuario.id();
+        if (!usuarioRepository.existsById(usuarioId)) {
             throw erro(HttpStatus.NOT_FOUND, "Usuário não encontrado");
         }
         Maquina maquina = maquinaRepository.findById(req.maquinaId())
@@ -70,30 +75,41 @@ public class UtilizacaoService {
         }
 
         Utilizacao u = new Utilizacao();
-        u.setUsuarioId(req.usuarioId());
+        u.setUsuarioId(usuarioId);
         u.setMaquinaId(req.maquinaId());
         u.setServicoId(req.servicoId());
         u.setInicioPrevisto(req.inicioPrevisto());
         u.setValorTotal(servico.getPreco());
         Utilizacao salva = repository.save(u);
 
-        auditoria.registrar(salva.getUsuarioId(), "criar_utilizacao", "utilizacao", salva.getId(), null);
+        auditoria.registrar(SessaoUsuario.id(), "criar_utilizacao", "utilizacao", salva.getId(), null);
         return UtilizacaoResponse.de(salva);
     }
 
     @Transactional(readOnly = true)
     public UtilizacaoResponse buscar(Integer id) {
-        return UtilizacaoResponse.de(obter(id));
+        Utilizacao u = obter(id);
+        SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
+        return UtilizacaoResponse.de(u);
     }
 
+    /** Cliente: sempre as próprias. Administrador: as do usuário informado, ou todas. */
     @Transactional(readOnly = true)
-    public List<UtilizacaoResponse> listarPorUsuario(Integer usuarioId) {
-        return repository.findByUsuarioIdOrderByCriadoEmDesc(usuarioId)
-                .stream().map(UtilizacaoResponse::de).toList();
+    public List<UtilizacaoResponse> listar(Integer usuarioId) {
+        List<Utilizacao> lista;
+        if (SessaoUsuario.admin()) {
+            lista = usuarioId == null
+                    ? repository.findAllByOrderByCriadoEmDesc()
+                    : repository.findByUsuarioIdOrderByCriadoEmDesc(usuarioId);
+        } else {
+            lista = repository.findByUsuarioIdOrderByCriadoEmDesc(SessaoUsuario.id());
+        }
+        return lista.stream().map(UtilizacaoResponse::de).toList();
     }
 
     public UtilizacaoResponse iniciar(Integer id) {
         Utilizacao u = obter(id);
+        SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
         if (u.getEstado() != EstadoUtilizacao.pendente) {
             throw erro(HttpStatus.CONFLICT, "Só é possível iniciar uma utilização pendente");
         }
@@ -116,12 +132,13 @@ public class UtilizacaoService {
 
         historico.registrar(m.getId(), u.getUsuarioId(), u.getId(), "inicio_utilizacao",
                 anterior, EstadoMaquina.em_uso.name(), null);
-        auditoria.registrar(u.getUsuarioId(), "iniciar_utilizacao", "utilizacao", u.getId(), null);
+        auditoria.registrar(SessaoUsuario.id(), "iniciar_utilizacao", "utilizacao", u.getId(), null);
         return UtilizacaoResponse.de(salva);
     }
 
     public UtilizacaoResponse concluir(Integer id) {
         Utilizacao u = obter(id);
+        SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
         if (u.getEstado() != EstadoUtilizacao.em_andamento) {
             throw erro(HttpStatus.CONFLICT, "Só é possível concluir uma utilização em andamento");
         }
@@ -138,18 +155,19 @@ public class UtilizacaoService {
 
         historico.registrar(m.getId(), u.getUsuarioId(), u.getId(), "fim_utilizacao",
                 anterior, EstadoMaquina.livre.name(), null);
-        auditoria.registrar(u.getUsuarioId(), "concluir_utilizacao", "utilizacao", u.getId(), null);
+        auditoria.registrar(SessaoUsuario.id(), "concluir_utilizacao", "utilizacao", u.getId(), null);
         return UtilizacaoResponse.de(salva);
     }
 
     public UtilizacaoResponse cancelar(Integer id) {
         Utilizacao u = obter(id);
+        SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
         if (u.getEstado() != EstadoUtilizacao.pendente) {
             throw erro(HttpStatus.CONFLICT, "Só é possível cancelar uma utilização pendente");
         }
         u.setEstado(EstadoUtilizacao.cancelada);
         Utilizacao salva = repository.save(u);
-        auditoria.registrar(u.getUsuarioId(), "cancelar_utilizacao", "utilizacao", u.getId(), null);
+        auditoria.registrar(SessaoUsuario.id(), "cancelar_utilizacao", "utilizacao", u.getId(), null);
         return UtilizacaoResponse.de(salva);
     }
 
