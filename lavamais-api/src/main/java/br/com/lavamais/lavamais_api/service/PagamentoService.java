@@ -3,6 +3,7 @@ package br.com.lavamais.lavamais_api.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +26,16 @@ public class PagamentoService {
     private final PagamentoRepository repository;
     private final UtilizacaoRepository utilizacaoRepository;
     private final AuditoriaService auditoria;
+    private final boolean simulacaoHabilitada;
 
     public PagamentoService(PagamentoRepository repository,
                             UtilizacaoRepository utilizacaoRepository,
-                            AuditoriaService auditoria) {
+                            AuditoriaService auditoria,
+                            @Value("${lavamais.pagamento.simulacao-habilitada:false}") boolean simulacaoHabilitada) {
         this.repository = repository;
         this.utilizacaoRepository = utilizacaoRepository;
         this.auditoria = auditoria;
+        this.simulacaoHabilitada = simulacaoHabilitada;
     }
 
     /** O valor vem sempre da utilização, nunca do app. */
@@ -82,6 +86,46 @@ public class PagamentoService {
         }
         Pagamento salvo = repository.save(p);
         auditoria.registrar(SessaoUsuario.id(), "pagamento_" + novo.name(), "pagamento", salvo.getId(), null);
+        return PagamentoResponse.de(salvo);
+    }
+
+    /** Simula a aprovação do pagamento em ambiente de desenvolvimento. */
+    public PagamentoResponse simularAprovacao(Integer id) {
+        if (!simulacaoHabilitada) {
+            throw erro(HttpStatus.FORBIDDEN, "Aprovação simulada de pagamentos está desabilitada neste ambiente");
+        }
+
+        // 1. Localiza o pagamento sem bloqueio para obter o utilizacaoId
+        Pagamento pInicial = repository.findById(id)
+                .orElseThrow(() -> erro(HttpStatus.NOT_FOUND, "Pagamento não encontrado"));
+
+        // 2. ORDEM DE BLOQUEIO: Bloqueia primeiro a Utilização (Pai)
+        Utilizacao u = utilizacaoRepository.findByIdComBloqueio(pInicial.getUtilizacaoId())
+                .orElseThrow(() -> erro(HttpStatus.NOT_FOUND, "Utilização não encontrada"));
+
+        // 3. Bloqueia em seguida o Pagamento (Filho)
+        Pagamento p = repository.findByIdComBloqueio(id)
+                .orElseThrow(() -> erro(HttpStatus.NOT_FOUND, "Pagamento não encontrado"));
+
+        SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
+
+        if (u.getEstado() != EstadoUtilizacao.pendente) {
+            throw erro(HttpStatus.CONFLICT, "A utilização associada a este pagamento não está pendente");
+        }
+
+        if (p.getEstado() == EstadoPagamento.aprovado) {
+            throw erro(HttpStatus.CONFLICT, "Este pagamento já foi aprovado");
+        }
+
+        if (p.getEstado() != EstadoPagamento.pendente) {
+            throw erro(HttpStatus.CONFLICT, "Apenas pagamentos pendentes podem ser aprovados");
+        }
+
+        p.setEstado(EstadoPagamento.aprovado);
+        p.setPagoEm(LocalDateTime.now());
+        Pagamento salvo = repository.save(p);
+
+        auditoria.registrar(SessaoUsuario.id(), "simular_aprovacao_pagamento", "pagamento", salvo.getId(), null);
         return PagamentoResponse.de(salvo);
     }
 

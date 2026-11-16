@@ -29,6 +29,9 @@ public class RecuperacaoSenha {
     @Column(name = "codigo_hash", nullable = false, length = 255)
     private String codigoHash;
 
+    @Column(name = "token_hash", length = 255)
+    private String tokenHash;
+
     @Column(name = "expira_em", nullable = false)
     private LocalDateTime expiraEm;
 
@@ -48,6 +51,8 @@ public class RecuperacaoSenha {
     public void setTipoOperacao(TipoOperacaoSenha tipoOperacao) { this.tipoOperacao = tipoOperacao; }
     public String getCodigoHash() { return codigoHash; }
     public void setCodigoHash(String codigoHash) { this.codigoHash = codigoHash; }
+    public String getTokenHash() { return tokenHash; }
+    public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
     public LocalDateTime getExpiraEm() { return expiraEm; }
     public void setExpiraEm(LocalDateTime expiraEm) { this.expiraEm = expiraEm; }
     public LocalDateTime getUtilizadoEm() { return utilizadoEm; }

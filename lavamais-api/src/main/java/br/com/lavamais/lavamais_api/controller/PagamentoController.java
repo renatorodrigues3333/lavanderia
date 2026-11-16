@@ -49,4 +49,9 @@ public class PagamentoController {
     public PagamentoResponse alterarEstado(@PathVariable Integer id, @Valid @RequestBody EstadoPagamentoRequest req) {
         return service.alterarEstado(id, req.estado());
     }
+
+    @PostMapping("/{id}/simular-aprovacao")
+    public PagamentoResponse simularAprovacao(@PathVariable Integer id) {
+        return service.simularAprovacao(id);
+    }
 }
