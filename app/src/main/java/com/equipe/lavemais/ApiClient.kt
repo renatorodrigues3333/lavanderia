@@ -50,24 +50,24 @@ object ApiClient {
             .create(ApiService::class.java)
     }
 
-    /** Extrai a mensagem de erro do JSON devolvido pelo Laravel. */
+    /** Extrai a mensagem de erro do JSON devolvido pela API Spring Boot / Laravel. */
     fun mensagemErro(response: Response<*>): String {
         try {
             val corpo = response.errorBody()?.string()
             if (!corpo.isNullOrBlank()) {
                 val json = JSONObject(corpo)
 
-                val erros = json.optJSONObject("errors")
-                if (erros != null && erros.keys().hasNext()) {
-                    val lista = erros.getJSONArray(erros.keys().next())
-                    if (lista.length() > 0) return lista.getString(0)
-                }
-
                 val mensagem = json.optString("mensagem")
                 if (mensagem.isNotBlank()) return mensagem
 
                 val message = json.optString("message")
                 if (message.isNotBlank()) return message
+
+                val erros = json.optJSONObject("errors")
+                if (erros != null && erros.keys().hasNext()) {
+                    val lista = erros.getJSONArray(erros.keys().next())
+                    if (lista.length() > 0) return lista.getString(0)
+                }
             }
         } catch (_: Exception) {
             // cai na mensagem padrão abaixo

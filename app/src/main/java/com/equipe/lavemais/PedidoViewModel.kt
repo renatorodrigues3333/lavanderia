@@ -61,12 +61,19 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
 
     fun carregarPedidos(aoExpirar: () -> Unit) {
         chamar(aoExpirar, { api.utilizacoes() }) { lista ->
-            pedidos = (lista ?: emptyList()).sortedByDescending { it.id }
+            val resolvidas = (lista ?: emptyList()).map { item ->
+                val nomeMaq = if (item.maquina.isNotBlank()) item.maquina
+                              else maquinaSelecionada?.identificacao ?: "Máquina ${item.maquinaId ?: item.id}"
+                val nomeServ = if (item.servico.isNotBlank()) item.servico
+                               else servicoSelecionado?.nome ?: "Serviço ${item.servicoId ?: ""}"
+                item.copy(maquina = nomeMaq, servico = nomeServ)
+            }
+            pedidos = resolvidas.sortedByDescending { it.id }
             pedidosRecebidosEm = System.currentTimeMillis()
         }
     }
 
-    /** Paga o pedido atual; o servidor inicia o ciclo e ocupa a máquina. */
+    /** Paga o pedido atual (cria registro de pagamento) e tenta iniciar a utilização. */
     fun pagar(metodo: String, aoExpirar: () -> Unit, aoConcluir: () -> Unit) {
         val id = pedidoId
         if (id == null) {
@@ -74,10 +81,36 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (carregando) return
+        carregando = true
+        erro = null
 
-        chamar(aoExpirar, { api.pagar(id, PagamentoRequest(metodo)) }) {
-            carregarPedidos(aoExpirar)
-            aoConcluir()
+        viewModelScope.launch {
+            try {
+                val respPag = api.criarPagamento(PagamentoRequest(utilizacao_id = id, metodo = metodo))
+                when {
+                    respPag.code() == 401 -> {
+                        sessao.limpar()
+                        limpar()
+                        aoExpirar()
+                    }
+                    respPag.isSuccessful -> {
+                        // Tenta iniciar a utilização após criar o pagamento
+                        val respIniciar = api.iniciarUtilizacao(id)
+                        if (respIniciar.code() == 401) {
+                            sessao.limpar()
+                            limpar()
+                            aoExpirar()
+                        } else {
+                            carregarPedidos(aoExpirar)
+                            aoConcluir()
+                        }
+                    }
+                    else -> erro = ApiClient.mensagemErro(respPag)
+                }
+            } catch (_: Exception) {
+                erro = ApiClient.mensagemFalha()
+            }
+            carregando = false
         }
     }
 

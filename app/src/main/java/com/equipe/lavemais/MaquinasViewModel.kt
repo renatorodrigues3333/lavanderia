@@ -25,7 +25,7 @@ class MaquinasViewModel(app: Application) : AndroidViewModel(app) {
     val livres: Int get() = maquinas.count { it.estado == "livre" }
     val emUso: Int get() = maquinas.count { it.estado == "em_uso" }
     val foraDeServico: Int
-        get() = maquinas.count { it.estado == "fora_de_servico" || it.estado == "manutencao" }
+        get() = maquinas.count { it.estado == "fora_de_servico" || it.estado == "manutencao" || it.estado == "indisponivel" }
 
     /** Carrega as máquinas. Se o token não valer mais, limpa a sessão e avisa. */
     fun carregar(aoExpirar: () -> Unit) {

@@ -59,13 +59,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     AtualizarPerfilRequest(
                         nome = nome.trim(),
                         email = email.trim().lowercase(),
-                        telefone = telefone,
-                        cpf = cpf,
-                        senha_atual = senhaAtual,
+                        telefone = telefone.ifBlank { null },
+                        cpf = cpf.ifBlank { null },
+                        senha_atual = senhaAtual.ifEmpty { null },
                         nova_senha = novaSenha.ifEmpty { null }
                     )
                 )
-                val atualizado = resposta.body()?.usuario
+                val atualizado = resposta.body()
                 val token = sessao.token
                 when {
                     resposta.code() == 401 -> {
@@ -114,7 +114,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             erro = "Preencha e-mail ou telefone e a senha."
             return
         }
-        executarAuth(aoConcluir) { api.login(LoginRequest(login.trim(), senha)) }
+        executarAuth(aoConcluir) { api.login(LoginRequest(email = login.trim(), senha = senha)) }
     }
 
     fun cadastrar(
@@ -125,16 +125,42 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         senha: String,
         aoConcluir: () -> Unit
     ) {
-        executarAuth(aoConcluir) {
-            api.register(
-                RegisterRequest(
-                    nome = nome.trim(),
-                    email = email.trim().lowercase(),
-                    telefone = telefone,
-                    cpf = cpf,
-                    senha = senha
+        if (carregando) return
+        carregando = true
+        erro = null
+
+        viewModelScope.launch {
+            try {
+                val respCadastro = api.register(
+                    RegisterRequest(
+                        nome = nome.trim(),
+                        email = email.trim().lowercase(),
+                        telefone = telefone.ifBlank { null },
+                        cpf = cpf.ifBlank { null },
+                        senha = senha
+                    )
                 )
-            )
+
+                if (respCadastro.isSuccessful) {
+                    // Tenta o login automático pós-cadastro para obter o token JWT
+                    val respLogin = api.login(LoginRequest(email = email.trim().lowercase(), senha = senha))
+                    val token = respLogin.body()?.token
+                    val usuario = respLogin.body()?.usuario
+
+                    if (respLogin.isSuccessful && token != null && usuario != null) {
+                        sessao.salvar(token, usuario.nome, usuario.email)
+                        this@AuthViewModel.usuario = usuario
+                        aoConcluir()
+                    } else {
+                        erro = "Cadastro realizado com sucesso! Faça login para continuar."
+                    }
+                } else {
+                    erro = ApiClient.mensagemErro(respCadastro)
+                }
+            } catch (_: Exception) {
+                erro = ApiClient.mensagemFalha()
+            }
+            carregando = false
         }
     }
 
