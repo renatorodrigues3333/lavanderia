@@ -7,6 +7,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
 
@@ -39,6 +40,9 @@ interface ApiService {
 
     @POST("pagamentos")
     suspend fun criarPagamento(@Body body: PagamentoRequest): Response<PagamentoResponse>
+
+    @GET("pagamentos")
+    suspend fun buscarPagamentosPorUtilizacao(@Query("utilizacaoId") utilizacaoId: Int): Response<List<PagamentoResponse>>
 
     @PATCH("utilizacoes/{id}/iniciar")
     suspend fun iniciarUtilizacao(@Path("id") id: Int): Response<UtilizacaoApi>
