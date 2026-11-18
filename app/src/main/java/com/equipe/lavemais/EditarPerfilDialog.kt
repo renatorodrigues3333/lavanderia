@@ -23,7 +23,6 @@ data class EdicaoPerfil(
     val nome: String,
     val email: String,
     val telefone: String,
-    val cpf: String,
     val senhaAtual: String,
     val novaSenha: String
 )
@@ -37,7 +36,6 @@ fun EditarPerfilDialog(
     nome: String,
     email: String,
     telefone: String?,
-    cpf: String?,
     salvando: Boolean = false,
     erroServidor: String? = null,
     onSalvar: (EdicaoPerfil) -> Unit = {},
@@ -50,7 +48,6 @@ fun EditarPerfilDialog(
     var campoNome by remember { mutableStateOf(nome) }
     var campoEmail by remember { mutableStateOf(email) }
     var campoTelefone by remember { mutableStateOf(telefone.orEmpty().filter { it.isDigit() }) }
-    var campoCpf by remember { mutableStateOf(cpf.orEmpty().filter { it.isDigit() }) }
     var senhaAtual by remember { mutableStateOf("") }
     var novaSenha by remember { mutableStateOf("") }
     var confirmacao by remember { mutableStateOf("") }
@@ -61,7 +58,6 @@ fun EditarPerfilDialog(
     val erroEmail = if (!emailValido.matches(campoEmail.trim())) "Digite um e-mail válido." else null
     val erroTelefone =
         if (campoTelefone.length !in 10..11) "Digite o telefone com DDD (10 ou 11 números)." else null
-    val erroCpf = if (campoCpf.length != 11) "Informe os 11 números do CPF." else null
     val erroSenhaAtual = if (senhaAtual.isEmpty()) "Informe sua senha atual para salvar." else null
     val erroNovaSenha =
         if (novaSenha.isNotEmpty() && (novaSenha.length < 8 || novaSenha.none { it.isLetter() } || novaSenha.none { it.isDigit() }))
@@ -70,7 +66,7 @@ fun EditarPerfilDialog(
         if (novaSenha.isNotEmpty() && confirmacao != novaSenha) "As senhas não coincidem." else null
 
     val valido = listOf(
-        erroNome, erroEmail, erroTelefone, erroCpf, erroSenhaAtual, erroNovaSenha, erroConfirmacao
+        erroNome, erroEmail, erroTelefone, erroSenhaAtual, erroNovaSenha, erroConfirmacao
     ).all { it == null }
 
     fun mostrar(erro: String?): String? = if (tentouSalvar) erro else null
@@ -100,13 +96,6 @@ fun EditarPerfilDialog(
                     aoMudar = { campoTelefone = it.filter { c -> c.isDigit() }.take(11) },
                     erro = mostrar(erroTelefone), dica = "Somente números, com DDD.",
                     valido = erroTelefone == null, teclado = KeyboardType.Phone, habilitado = !salvando
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                CampoCadastro(
-                    rotulo = "CPF *", valor = campoCpf,
-                    aoMudar = { campoCpf = it.filter { c -> c.isDigit() }.take(11) },
-                    erro = mostrar(erroCpf), dica = "Somente números.",
-                    valido = erroCpf == null, teclado = KeyboardType.Number, habilitado = !salvando
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -153,7 +142,6 @@ fun EditarPerfilDialog(
                                 nome = campoNome.trim(),
                                 email = campoEmail.trim(),
                                 telefone = campoTelefone,
-                                cpf = campoCpf,
                                 senhaAtual = senhaAtual,
                                 novaSenha = novaSenha
                             )
@@ -186,6 +174,5 @@ fun EditarPerfilDialogPreview() {
         nome = "Ana Clara Lima",
         email = "ana.lima@exemplo.com",
         telefone = "11998764820",
-        cpf = "12345678901"
     )
 }

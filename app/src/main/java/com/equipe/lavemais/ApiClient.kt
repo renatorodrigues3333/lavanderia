@@ -14,7 +14,7 @@ object ApiClient {
     // Definido em app/build.gradle.kts (buildConfigField "API_BASE_URL").
     // Emulador do Android Studio: 10.0.2.2 aponta para o seu computador.
     // Celular físico: troque pelo IP do Mac na rede Wi-Fi,
-    // por exemplo "http://192.168.0.10:8000/api/"
+    // por exemplo "http://192.168.0.10:8080/api/"
     val BASE_URL: String = BuildConfig.API_BASE_URL
 
     @Volatile
@@ -32,10 +32,15 @@ object ApiClient {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(Interceptor { chain ->
-                val pedido = chain.request().newBuilder()
+                val original = chain.request()
+                val pedido = original.newBuilder()
                     .header("Accept", "application/json")
+                // Login e cadastro são públicos: um token antigo faria a API recusar a chamada
+                val caminho = original.url.encodedPath
+                val rotaPublica = caminho.endsWith("/auth/login") ||
+                    (original.method == "POST" && caminho.endsWith("/usuarios"))
                 val token = sessao.token
-                if (token != null) {
+                if (token != null && !rotaPublica) {
                     pedido.header("Authorization", "Bearer $token")
                 }
                 chain.proceed(pedido.build())
@@ -50,7 +55,7 @@ object ApiClient {
             .create(ApiService::class.java)
     }
 
-    /** Extrai a mensagem de erro do JSON devolvido pelo Laravel. */
+    /** Extrai a mensagem de erro do JSON da API: { "status": 409, "mensagem": "..." }. */
     fun mensagemErro(response: Response<*>): String {
         try {
             val corpo = response.errorBody()?.string()

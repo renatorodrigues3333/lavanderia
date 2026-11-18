@@ -52,9 +52,13 @@ fun iconeServico(servico: ServicoApi?): ImageVector {
     }
 }
 
+/** Fuso do servidor: a API envia datas sem fuso (LocalDateTime), no horário de Belém. */
+private val fusoServidor: TimeZone = TimeZone.getTimeZone("America/Belem")
+
 /**
- * Lê as datas enviadas pelo Laravel, por exemplo
- * "2026-10-18T12:12:00.000000Z", "2026-10-18T09:12:00-03:00" ou "2026-10-18 09:12:00".
+ * Lê as datas enviadas pela API, por exemplo
+ * "2026-10-18T09:12:00.123456", "2026-10-18T09:12:00-03:00" ou "2026-10-18 09:12:00".
+ * Datas sem fuso são lidas como horário de Belém.
  */
 fun dataApi(texto: String?): Date? {
     if (texto.isNullOrBlank()) return null
@@ -68,6 +72,7 @@ fun dataApi(texto: String?): Date? {
             val formato = SimpleDateFormat(padrao, Locale.US)
             formato.isLenient = false
             if (utc) formato.timeZone = TimeZone.getTimeZone("UTC")
+            else if (!padrao.endsWith("XXX")) formato.timeZone = fusoServidor
             return formato.parse(t)
         } catch (_: Exception) {
             // tenta o próximo formato
@@ -107,10 +112,4 @@ fun mascararTelefone(telefone: String?): String {
     val d = telefone.orEmpty().filter { it.isDigit() }
     if (d.length < 10) return if (d.isEmpty()) "—" else telefone.orEmpty()
     return "(${d.take(2)}) ${d[2]}****-${d.takeLast(4)}"
-}
-
-/** "12345678901" -> "***.***.***-01" */
-fun mascararCpf(cpf: String?): String {
-    val d = cpf.orEmpty().filter { it.isDigit() }
-    return if (d.length >= 2) "***.***.***-${d.takeLast(2)}" else "***.***.***-**"
 }

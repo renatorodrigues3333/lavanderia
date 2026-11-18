@@ -14,13 +14,14 @@
 # Modelos da API (ApiModelos.kt): o Gson usa o nome dos campos para ler/gravar o JSON,
 # então eles não podem ser renomeados nem removidos pelo R8.
 -keep class com.equipe.lavemais.LoginRequest { *; }
--keep class com.equipe.lavemais.RegisterRequest { *; }
--keep class com.equipe.lavemais.UsuarioApi { *; }
+-keep class com.equipe.lavemais.CadastroUsuarioRequest { *; }
 -keep class com.equipe.lavemais.AtualizarPerfilRequest { *; }
--keep class com.equipe.lavemais.AuthResponse { *; }
--keep class com.equipe.lavemais.MaquinaApi { *; }
--keep class com.equipe.lavemais.ServicoApi { *; }
--keep class com.equipe.lavemais.NovaUtilizacaoRequest { *; }
+-keep class com.equipe.lavemais.UsuarioLogadoApi { *; }
+-keep class com.equipe.lavemais.LoginResponse { *; }
+-keep class com.equipe.lavemais.UsuarioResponse { *; }
+-keep class com.equipe.lavemais.MaquinaResponse { *; }
+-keep class com.equipe.lavemais.ServicoResponse { *; }
+-keep class com.equipe.lavemais.UtilizacaoRequest { *; }
+-keep class com.equipe.lavemais.UtilizacaoResponse { *; }
 -keep class com.equipe.lavemais.PagamentoRequest { *; }
--keep class com.equipe.lavemais.UtilizacaoApi { *; }
--keep class com.equipe.lavemais.MensagemResponse { *; }
+-keep class com.equipe.lavemais.PagamentoResponse { *; }
