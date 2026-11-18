@@ -97,7 +97,7 @@ public class AuthService {
     }
 
     private UsuarioLogadoResponse paraResposta(Usuario u) {
-        return new UsuarioLogadoResponse(u.getId(), u.getNome(), u.getEmail(), ehAdmin(u.getEmail()));
+        return new UsuarioLogadoResponse(u.getId(), u.getNome(), u.getEmail(), ehAdmin(u.getEmail()), u.getTelefone());
     }
 
     private boolean ehAdmin(String email) {

@@ -94,8 +94,8 @@ fun AppNavigation() {
             CadastroScreen(
                 carregando = authVm.carregando,
                 erroServidor = authVm.erro,
-                onCadastrar = { nome, email, telefone, cpf, senha ->
-                    authVm.cadastrar(nome, email, telefone, cpf, senha) {
+                onCadastrar = { nome, email, telefone, senha ->
+                    authVm.cadastrar(nome, email, telefone, senha) {
                         navController.navigate(Rotas.HOME) {
                             popUpTo(Rotas.LOGIN) { inclusive = true }
                         }
@@ -273,7 +273,6 @@ fun AppNavigation() {
                 nome = authVm.nome,
                 email = authVm.email,
                 telefone = authVm.usuario?.telefone,
-                cpf = authVm.usuario?.cpf,
                 salvandoPerfil = authVm.salvandoPerfil,
                 erroPerfil = authVm.erroPerfil,
                 onAbrirEdicao = { authVm.limparErroPerfil() },
@@ -282,7 +281,6 @@ fun AppNavigation() {
                         nome = dados.nome,
                         email = dados.email,
                         telefone = dados.telefone,
-                        cpf = dados.cpf,
                         senhaAtual = dados.senhaAtual,
                         novaSenha = dados.novaSenha,
                         aoExpirar = sessaoExpirada

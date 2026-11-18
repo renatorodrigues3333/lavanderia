@@ -20,7 +20,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     var erro by mutableStateOf<String?>(null)
         private set
 
-    /** Dados completos de quem está logado (vem de GET /me). */
+    /** Dados completos de quem está logado (vem de GET /auth/me). */
     var usuario by mutableStateOf<UsuarioApi?>(null)
         private set
 
@@ -38,14 +38,14 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         erroPerfil = null
     }
 
-    /** Envia as alterações do perfil (PUT /me). [novaSenha] vazia mantém a senha atual. */
+    /** Envia as alterações do perfil (PUT /usuarios/me). [novaSenha] vazia mantém a senha atual. */
     fun atualizarPerfil(
         nome: String,
         email: String,
         telefone: String,
-        cpf: String,
         senhaAtual: String,
         novaSenha: String,
+        cpf: String? = null,
         aoExpirar: () -> Unit,
         aoConcluir: () -> Unit
     ) {
@@ -60,12 +60,12 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                         nome = nome.trim(),
                         email = email.trim().lowercase(),
                         telefone = telefone.ifBlank { null },
-                        cpf = cpf.ifBlank { null },
-                        senha_atual = senhaAtual.ifEmpty { null },
-                        nova_senha = novaSenha.ifEmpty { null }
+                        cpf = cpf?.ifBlank { null },
+                        senhaAtual = senhaAtual.ifEmpty { null },
+                        novaSenha = novaSenha.ifEmpty { null }
                     )
                 )
-                val atualizado = resposta.body()
+                val atualizado = resposta.body()?.paraUsuario()
                 val token = sessao.token
                 when {
                     resposta.code() == 401 -> {
@@ -97,7 +97,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     usuario = null
                     aoExpirar()
                 } else if (resposta.isSuccessful) {
-                    usuario = resposta.body()
+                    usuario = resposta.body()?.paraUsuario()
                 }
             } catch (_: Exception) {
                 // mantém os dados salvos na sessão
@@ -111,18 +111,29 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     fun entrar(login: String, senha: String, aoConcluir: () -> Unit) {
         if (login.isBlank() || senha.isBlank()) {
-            erro = "Preencha e-mail ou telefone e a senha."
+            erro = "Preencha o e-mail e a senha."
             return
         }
-        executarAuth(aoConcluir) { api.login(LoginRequest(email = login.trim(), senha = senha)) }
+        carregando = true
+        erro = null
+
+        viewModelScope.launch {
+            try {
+                concluirLogin(api.login(LoginRequest(login.trim(), senha)), aoConcluir)
+            } catch (_: Exception) {
+                erro = ApiClient.mensagemFalha()
+            }
+            carregando = false
+        }
     }
 
+    /** A API só cria a conta (sem token), então entramos com o mesmo e-mail e senha em seguida. */
     fun cadastrar(
         nome: String,
         email: String,
         telefone: String,
-        cpf: String,
         senha: String,
+        cpf: String? = null,
         aoConcluir: () -> Unit
     ) {
         if (carregando) return
@@ -131,31 +142,20 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             try {
-                val respCadastro = api.register(
-                    RegisterRequest(
+                val emailLimpo = email.trim().lowercase()
+                val cadastro = api.register(
+                    CadastroUsuarioRequest(
                         nome = nome.trim(),
-                        email = email.trim().lowercase(),
+                        email = emailLimpo,
+                        senha = senha,
                         telefone = telefone.ifBlank { null },
-                        cpf = cpf.ifBlank { null },
-                        senha = senha
+                        cpf = cpf?.ifBlank { null }
                     )
                 )
-
-                if (respCadastro.isSuccessful) {
-                    // Tenta o login automático pós-cadastro para obter o token JWT
-                    val respLogin = api.login(LoginRequest(email = email.trim().lowercase(), senha = senha))
-                    val token = respLogin.body()?.token
-                    val usuario = respLogin.body()?.usuario
-
-                    if (respLogin.isSuccessful && token != null && usuario != null) {
-                        sessao.salvar(token, usuario.nome, usuario.email)
-                        this@AuthViewModel.usuario = usuario
-                        aoConcluir()
-                    } else {
-                        erro = "Cadastro realizado com sucesso! Faça login para continuar."
-                    }
+                if (cadastro.isSuccessful) {
+                    concluirLogin(api.login(LoginRequest(emailLimpo, senha)), aoConcluir)
                 } else {
-                    erro = ApiClient.mensagemErro(respCadastro)
+                    erro = ApiClient.mensagemErro(cadastro)
                 }
             } catch (_: Exception) {
                 erro = ApiClient.mensagemFalha()
@@ -177,30 +177,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun executarAuth(
-        aoConcluir: () -> Unit,
-        chamada: suspend () -> Response<AuthResponse>
-    ) {
-        carregando = true
-        erro = null
+    private fun concluirLogin(resposta: Response<LoginResponse>, aoConcluir: () -> Unit) {
+        val token = resposta.body()?.token
+        val logado = resposta.body()?.usuario?.paraUsuario()
 
-        viewModelScope.launch {
-            try {
-                val resposta = chamada()
-                val token = resposta.body()?.token
-                val usuario = resposta.body()?.usuario
-
-                if (resposta.isSuccessful && token != null && usuario != null) {
-                    sessao.salvar(token, usuario.nome, usuario.email)
-                    this@AuthViewModel.usuario = usuario
-                    aoConcluir()
-                } else {
-                    erro = ApiClient.mensagemErro(resposta)
-                }
-            } catch (_: Exception) {
-                erro = ApiClient.mensagemFalha()
-            }
-            carregando = false
+        if (resposta.isSuccessful && token != null && logado != null) {
+            sessao.salvar(token, logado.nome, logado.email)
+            usuario = logado
+            aoConcluir()
+        } else {
+            erro = ApiClient.mensagemErro(resposta)
         }
     }
 }

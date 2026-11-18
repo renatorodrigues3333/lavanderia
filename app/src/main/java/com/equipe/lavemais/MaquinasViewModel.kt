@@ -39,7 +39,7 @@ class MaquinasViewModel(app: Application) : AndroidViewModel(app) {
                     sessao.limpar()
                     aoExpirar()
                 } else if (resposta.isSuccessful) {
-                    maquinas = resposta.body() ?: emptyList()
+                    maquinas = resposta.body().orEmpty().map { it.paraMaquina() }
                 } else {
                     erro = ApiClient.mensagemErro(resposta)
                 }

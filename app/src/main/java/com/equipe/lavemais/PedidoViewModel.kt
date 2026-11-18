@@ -56,20 +56,42 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun carregarServicos(aoExpirar: () -> Unit) {
-        chamar(aoExpirar, { api.servicos() }) { servicos = it ?: emptyList() }
+        chamar(aoExpirar, { api.servicos() }) { lista ->
+            servicos = (lista ?: emptyList()).filter { it.ativo == true }.map { it.paraServico() }
+        }
     }
 
+    /**
+     * Busca as utilizações e também máquinas e serviços, porque a API devolve
+     * só os ids e as telas precisam do nome da máquina e do serviço.
+     */
     fun carregarPedidos(aoExpirar: () -> Unit) {
-        chamar(aoExpirar, { api.utilizacoes() }) { lista ->
-            val resolvidas = (lista ?: emptyList()).map { item ->
-                val nomeMaq = if (item.maquina.isNotBlank()) item.maquina
-                              else maquinaSelecionada?.identificacao ?: "Máquina ${item.maquinaId ?: item.id}"
-                val nomeServ = if (item.servico.isNotBlank()) item.servico
-                               else servicoSelecionado?.nome ?: "Serviço ${item.servicoId ?: ""}"
-                item.copy(maquina = nomeMaq, servico = nomeServ)
+        viewModelScope.launch {
+            try {
+                val resposta = api.utilizacoes()
+                when {
+                    resposta.code() == 401 -> {
+                        sessao.limpar()
+                        limpar()
+                        aoExpirar()
+                    }
+                    resposta.isSuccessful -> {
+                        val maquinas = api.maquinas().body().orEmpty()
+                            .map { it.paraMaquina() }.associateBy { it.id }
+                        val servicosPorId = api.servicos().body().orEmpty()
+                            .map { it.paraServico() }.associateBy { it.id }
+                        val agora = System.currentTimeMillis()
+
+                        pedidos = resposta.body().orEmpty()
+                            .map { it.paraUtilizacao(maquinas, servicosPorId, agora) }
+                            .sortedByDescending { it.id }
+                        pedidosRecebidosEm = agora
+                    }
+                    else -> erro = ApiClient.mensagemErro(resposta)
+                }
+            } catch (_: Exception) {
+                erro = ApiClient.mensagemFalha()
             }
-            pedidos = resolvidas.sortedByDescending { it.id }
-            pedidosRecebidosEm = System.currentTimeMillis()
         }
     }
 
@@ -119,7 +141,7 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
                     pagamentoExistente
                 } else {
                     // Não existe nenhum pagamento ativo (ou o último foi recusado). Cria um novo pagamento (POST /api/pagamentos)
-                    val respPag = api.criarPagamento(PagamentoRequest(utilizacao_id = id, metodo = metodo))
+                    val respPag = api.criarPagamento(PagamentoRequest(utilizacaoId = id, metodo = metodo))
                     if (respPag.code() == 401) {
                         sessao.limpar()
                         limpar()
@@ -193,8 +215,9 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (_: Exception) {
                 erro = ApiClient.mensagemFalha()
+            } finally {
+                carregando = false
             }
-            carregando = false
         }
     }
 
@@ -208,7 +231,7 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (carregando) return
 
-        chamar(aoExpirar, { api.criarUtilizacao(NovaUtilizacaoRequest(maquina.id, servico.id)) }) { resposta ->
+        chamar(aoExpirar, { api.criarUtilizacao(UtilizacaoRequest(maquina.id, servico.id)) }) { resposta ->
             pedidoId = resposta?.id
             carregarPedidos(aoExpirar)
             aoConcluir()
@@ -224,6 +247,20 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
         pedidoId = null
         pedidosRecebidosEm = 0L
         erro = null
+    }
+
+    /** true se a resposta foi 2xx; em 401 encerra a sessão e nos demais erros guarda a mensagem. */
+    private fun <T> Response<T>.deuCerto(aoExpirar: () -> Unit): Boolean {
+        when {
+            code() == 401 -> {
+                sessao.limpar()
+                limpar()
+                aoExpirar()
+            }
+            isSuccessful -> return true
+            else -> erro = ApiClient.mensagemErro(this)
+        }
+        return false
     }
 
     private fun <T> chamar(

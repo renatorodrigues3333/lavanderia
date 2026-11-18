@@ -34,7 +34,7 @@ private val emailRegex = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 fun CadastroScreen(
     carregando: Boolean = false,
     erroServidor: String? = null,
-    onCadastrar: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
+    onCadastrar: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onVoltar: () -> Unit = {},
     onEntrar: () -> Unit = {}
 ) {
@@ -44,7 +44,6 @@ fun CadastroScreen(
     var nome by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var telefone by remember { mutableStateOf("") }
-    var cpf by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var confirmacaoSenha by remember { mutableStateOf("") }
     var termosAceites by remember { mutableStateOf(false) }
@@ -63,7 +62,6 @@ fun CadastroScreen(
     val erroEmail = if (!emailRegex.matches(email.trim())) "Digite um e-mail válido." else null
     val erroTelefone =
         if (telefone.length !in 10..11) "Digite o telefone com DDD (10 ou 11 números)." else null
-    val erroCpf = if (cpf.length != 11) "Obrigatório: informe os 11 números do CPF." else null
     val erroSenha =
         if (senha.length < 8 || senha.none { it.isLetter() } || senha.none { it.isDigit() })
             "Use no mínimo 8 caracteres, com letras e números." else null
@@ -71,7 +69,7 @@ fun CadastroScreen(
         if (confirmacaoSenha.isEmpty() || confirmacaoSenha != senha) "As senhas não coincidem." else null
 
     val formularioValido = listOf(
-        erroNome, erroEmail, erroTelefone, erroCpf, erroSenha, erroConfirmacao
+        erroNome, erroEmail, erroTelefone, erroSenha, erroConfirmacao
     ).all { it == null } && termosAceites
 
     // Só mostra os erros depois da primeira tentativa de envio
@@ -201,19 +199,6 @@ fun CadastroScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         CampoCadastro(
-            rotulo = "CPF *",
-            valor = cpf,
-            aoMudar = { cpf = it.filter { c -> c.isDigit() }.take(11) },
-            erro = mostrar(erroCpf),
-            dica = "Somente números. Usado para emitir comprovantes.",
-            valido = erroCpf == null,
-            teclado = KeyboardType.Number,
-            habilitado = !carregando
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        CampoCadastro(
             rotulo = "Senha *",
             valor = senha,
             aoMudar = { senha = it },
@@ -295,7 +280,7 @@ fun CadastroScreen(
             onClick = {
                 tentouEnviar = true
                 if (formularioValido) {
-                    onCadastrar(nome.trim(), email.trim(), telefone, cpf, senha)
+                    onCadastrar(nome.trim(), email.trim(), telefone, senha)
                 }
             },
             enabled = !carregando,

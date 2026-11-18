@@ -128,13 +128,13 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Campo de Email/Telefone
-        Text(text = "E-mail ou telefone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        // Campo de E-mail
+        Text(text = "E-mail", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            placeholder = { Text("Digite seu e-mail ou telefone") },
+            placeholder = { Text("Digite seu e-mail") },
             leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
