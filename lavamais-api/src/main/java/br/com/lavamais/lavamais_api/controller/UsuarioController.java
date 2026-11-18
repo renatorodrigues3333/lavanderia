@@ -2,11 +2,14 @@ package br.com.lavamais.lavamais_api.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.lavamais.lavamais_api.config.SessaoUsuario;
+import br.com.lavamais.lavamais_api.dto.AtualizarPerfilRequest;
 import br.com.lavamais.lavamais_api.dto.CadastroUsuarioRequest;
 import br.com.lavamais.lavamais_api.dto.UsuarioResponse;
 import br.com.lavamais.lavamais_api.service.UsuarioService;
@@ -26,5 +29,10 @@ public class UsuarioController {
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioResponse cadastrar(@Valid @RequestBody CadastroUsuarioRequest req) {
         return service.cadastrar(req);
+    }
+
+    @PutMapping("/me")
+    public UsuarioResponse atualizarPerfil(@Valid @RequestBody AtualizarPerfilRequest req) {
+        return service.atualizarPerfil(SessaoUsuario.id(), req);
     }
 }

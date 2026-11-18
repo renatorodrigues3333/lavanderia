@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -160,15 +161,66 @@ public class UtilizacaoService {
     }
 
     public UtilizacaoResponse cancelar(Integer id) {
-        Utilizacao u = obter(id);
+        Utilizacao u = repository.findByIdComBloqueio(id)
+                .orElseThrow(() -> erro(HttpStatus.NOT_FOUND, "Utilização não encontrada"));
         SessaoUsuario.exigirDonoOuAdmin(u.getUsuarioId());
         if (u.getEstado() != EstadoUtilizacao.pendente) {
             throw erro(HttpStatus.CONFLICT, "Só é possível cancelar uma utilização pendente");
         }
+        if (pagamentoRepository.existsByUtilizacaoIdAndEstado(id, EstadoPagamento.aprovado)) {
+            throw erro(HttpStatus.CONFLICT, "Não é possível cancelar uma utilização com pagamento já aprovado");
+        }
         u.setEstado(EstadoUtilizacao.cancelada);
         Utilizacao salva = repository.save(u);
-        auditoria.registrar(SessaoUsuario.id(), "cancelar_utilizacao", "utilizacao", u.getId(), null);
+        auditoria.registrar(SessaoUsuario.id(), "cancelar_utilizacao", "utilizacao", salva.getId(), null);
         return UtilizacaoResponse.de(salva);
+    }
+
+    /** Conclui automaticamente uma utilização em andamento se a duração do serviço já tiver expirado. Executa em transação individual. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean processarConclusaoAutomatica(Integer utilizacaoId) {
+        // 1. Bloqueia a Utilização com Lock Pessimista
+        Utilizacao u = repository.findByIdComBloqueio(utilizacaoId).orElse(null);
+        if (u == null || u.getEstado() != EstadoUtilizacao.em_andamento) {
+            return false;
+        }
+
+        // 2. Valida tempo decorrido do serviço
+        if (u.getInicioReal() == null) {
+            return false;
+        }
+
+        Servico servico = servicoRepository.findById(u.getServicoId()).orElse(null);
+        if (servico == null || servico.getDuracaoEstimada() == null || servico.getDuracaoEstimada() <= 0) {
+            return false;
+        }
+
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime fimEstimado = u.getInicioReal().plusMinutes(servico.getDuracaoEstimada());
+        if (agora.isBefore(fimEstimado)) {
+            return false; // Ainda não venceu o tempo do ciclo
+        }
+
+        // 3. Libera a Máquina
+        Maquina m = maquinaRepository.findById(u.getMaquinaId()).orElse(null);
+        if (m != null) {
+            String anterior = m.getEstado().name();
+            m.setEstado(EstadoMaquina.livre);
+            maquinaRepository.save(m);
+            historico.registrar(m.getId(), u.getUsuarioId(), u.getId(), "fim_utilizacao_automatica",
+                    anterior, EstadoMaquina.livre.name(), "Ciclo concluído automaticamente pelo sistema após término do tempo estimado");
+        }
+
+        // 4. Atualiza a Utilização
+        u.setEstado(EstadoUtilizacao.concluida);
+        u.setFimReal(agora);
+        repository.save(u);
+
+        // 5. Registra Auditoria
+        auditoria.registrar(null, "concluir_utilizacao_automatica", "utilizacao", u.getId(),
+                "Ciclo de " + servico.getDuracaoEstimada() + " minutos concluído automaticamente");
+
+        return true;
     }
 
     private Utilizacao obter(Integer id) {

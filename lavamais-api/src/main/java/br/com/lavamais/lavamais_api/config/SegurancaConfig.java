@@ -73,8 +73,8 @@ public class SegurancaConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/error").permitAll()
-                        // públicas: cadastro e login
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/auth/login").permitAll()
+                        // públicas: cadastro, login e recuperação de senha
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/auth/login", "/api/auth/recuperar-senha/**").permitAll()
                         // só o administrador
                         .requestMatchers(HttpMethod.POST, "/api/maquinas/**", "/api/servicos/**", "/api/notificacoes").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/maquinas/**", "/api/servicos/**").hasRole("ADMIN")
