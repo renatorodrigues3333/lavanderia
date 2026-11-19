@@ -29,6 +29,7 @@ object Rotas {
     const val HISTORICO = "historico"
     const val PERFIL = "perfil"
     const val ADMIN = "admin"
+    const val NOTIFICACOES = "notificacoes"
 }
 
 /** Navegação da barra inferior: Início / Máquinas / Pedidos / Perfil. */
@@ -384,6 +385,19 @@ fun AppNavigation() {
                         navController.irParaLogin()
                     }
                 }
+            )
+        }
+
+        composable(Rotas.NOTIFICACOES) {
+            LaunchedEffect(Unit) {
+                authVm.carregarNotificacoes(sessaoExpirada)
+            }
+            NotificacoesScreen(
+                notificacoes = authVm.notificacoes,
+                carregando = authVm.carregando,
+                erro = authVm.erro,
+                onMarcarLida = { id -> authVm.marcarNotificacaoLida(id, sessaoExpirada) },
+                onVoltar = { navController.popBackStack() }
             )
         }
     }

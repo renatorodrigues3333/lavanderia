@@ -91,6 +91,8 @@ data class ServicoRequest(
 /** tema (até 150 caracteres) é o assunto; descricao é obrigatória. */
 data class SuporteRequest(val tema: String? = null, val descricao: String)
 
+typealias SuporteApiRequest = SuporteRequest
+
 /** estado: "aberto", "em_atendimento", "resolvido" ou "cancelado". */
 data class SuporteResponse(
     val id: Int = 0,
@@ -101,6 +103,8 @@ data class SuporteResponse(
     val criadoEm: String? = null,
     val resolvidoEm: String? = null
 )
+
+typealias SuporteApiResponse = SuporteResponse
 
 /** usuarioId nulo = notificação geral, enviada a todos. */
 data class NotificacaoResponse(
@@ -113,6 +117,8 @@ data class NotificacaoResponse(
     val lidoEm: String? = null,
     val criadoEm: String? = null
 )
+
+typealias NotificacaoApiResponse = NotificacaoResponse
 
 // ----- Lavanderia (nome e endereço) -----
 
@@ -143,7 +149,10 @@ data class PagamentoRequest(val utilizacaoId: Int, val metodo: String)
 data class PagamentoResponse(
     val id: Int = 0,
     val utilizacaoId: Int = 0,
-    val estado: String = ""
+    val estado: String = "",
+    val qrCode: String? = null,
+    val copiaECola: String? = null,
+    val pagoEm: String? = null
 )
 
 // ---------------------------------------------------------------------------

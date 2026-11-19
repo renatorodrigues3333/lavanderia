@@ -74,7 +74,7 @@ fun HomeScreen(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = { /* Notificações */ }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { onNavegar(Rotas.NOTIFICACOES) }, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = "Notificações",

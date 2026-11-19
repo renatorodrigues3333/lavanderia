@@ -109,10 +109,7 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Paga o pedido atual em 3 passos: registra o pagamento, aprova (simulação de
-     * demonstração) e inicia o ciclo, que ocupa a máquina.
-     */
+    /** Paga o pedido atual ou verifica pagamento existente (evitando duplicidades) e só inicia se efetivamente aprovado. */
     fun pagar(metodo: String, aoExpirar: () -> Unit, aoConcluir: () -> Unit) {
         val id = pedidoId
         if (id == null) {
@@ -126,20 +123,120 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             try {
-                val pagamento = api.criarPagamento(PagamentoRequest(id, metodo))
-                if (!pagamento.deuCerto(aoExpirar)) return@launch
+                // 1. Consulta pagamentos existentes para a utilização (GET /api/pagamentos?utilizacaoId=id)
+                val respConsulta = api.buscarPagamentosPorUtilizacao(id)
 
-                val pagamentoId = pagamento.body()?.id
-                if (pagamentoId == null) {
-                    erro = "Resposta inesperada do servidor ao registrar o pagamento."
+                if (respConsulta.code() == 401) {
+                    sessao.limpar()
+                    limpar()
+                    aoExpirar()
+                    carregando = false
                     return@launch
                 }
 
-                if (!api.simularAprovacao(pagamentoId).deuCerto(aoExpirar)) return@launch
-                if (!api.iniciarUtilizacao(id).deuCerto(aoExpirar)) return@launch
+                if (!respConsulta.isSuccessful) {
+                    // Trata erro na consulta GET (500, 503, etc.) sem tentar criar um novo pagamento indevidamente
+                    erro = ApiClient.mensagemErro(respConsulta)
+                    carregando = false
+                    return@launch
+                }
 
-                carregarPedidos(aoExpirar)
-                aoConcluir()
+                val pagamentosExistentes = respConsulta.body() ?: emptyList()
+
+                // Seleção inteligente do pagamento ativo:
+                // Prioriza "aprovado", depois "pendente", depois "reembolso". Se o último foi "recusado", permite nova tentativa (null)
+                val aprovado = pagamentosExistentes.firstOrNull { it.estado.lowercase() == "aprovado" }
+                val pendente = pagamentosExistentes.lastOrNull { it.estado.lowercase() == "pendente" }
+                val reembolso = pagamentosExistentes.lastOrNull { it.estado.lowercase() == "reembolso" }
+
+                val pagamentoExistente = aprovado ?: pendente ?: reembolso
+
+                val pagamentoAtual: PagamentoResponse? = if (pagamentoExistente != null) {
+                    // Já existe um pagamento ativo (aprovado, pendente ou reembolso)! Reutiliza sem criar duplicado.
+                    pagamentoExistente
+                } else {
+                    // Não existe nenhum pagamento ativo (ou o último foi recusado). Cria um novo pagamento (POST /api/pagamentos)
+                    val respPag = api.criarPagamento(PagamentoRequest(utilizacaoId = id, metodo = metodo))
+                    if (respPag.code() == 401) {
+                        sessao.limpar()
+                        limpar()
+                        aoExpirar()
+                        carregando = false
+                        return@launch
+                    }
+                    if (!respPag.isSuccessful) {
+                        erro = ApiClient.mensagemErro(respPag)
+                        carregando = false
+                        return@launch
+                    }
+                    val corpo = respPag.body()
+                    if (corpo == null) {
+                        erro = "O pagamento foi registrado, mas o servidor não retornou os dados do pagamento. Atualize os pedidos antes de tentar novamente."
+                        carregarPedidos(aoExpirar)
+                        carregando = false
+                        return@launch
+                    }
+                    corpo
+                }
+
+                val estadoPagamento = pagamentoAtual?.estado?.lowercase() ?: "pendente"
+
+                when (estadoPagamento) {
+                    "recusado" -> {
+                        erro = "Pagamento recusado. Escolha outra forma de pagamento ou tente novamente."
+                        carregarPedidos(aoExpirar)
+                    }
+                    "reembolso" -> {
+                        erro = "Pagamento com reembolso solicitado. O início do ciclo foi cancelado."
+                        carregarPedidos(aoExpirar)
+                    }
+                    "aprovado" -> {
+                        // Pagamento aprovado! Tenta iniciar a utilização (PATCH /api/utilizacoes/{id}/iniciar)
+                        val respIniciar = api.iniciarUtilizacao(id)
+                        when {
+                            respIniciar.code() == 401 -> {
+                                sessao.limpar()
+                                limpar()
+                                aoExpirar()
+                            }
+                            respIniciar.isSuccessful -> {
+                                carregarPedidos(aoExpirar)
+                                aoConcluir()
+                            }
+                            else -> {
+                                erro = ApiClient.mensagemErro(respIniciar)
+                                carregarPedidos(aoExpirar)
+                            }
+                        }
+                    }
+                    else -> { // "pendente" ou outro estado não aprovado
+                        val pagamentoId = pagamentoAtual?.id
+                        if (pagamentoId != null && pagamentoExistente == null) {
+                            api.simularAprovacao(pagamentoId)
+                        }
+
+                        val respIniciar = api.iniciarUtilizacao(id)
+                        when {
+                            respIniciar.code() == 401 -> {
+                                sessao.limpar()
+                                limpar()
+                                aoExpirar()
+                            }
+                            respIniciar.isSuccessful -> {
+                                carregarPedidos(aoExpirar)
+                                aoConcluir()
+                            }
+                            respIniciar.code() == 409 -> {
+                                erro = "Pagamento registrado com sucesso! Aguardando confirmação do pagamento para iniciar a máquina."
+                                carregarPedidos(aoExpirar)
+                            }
+                            else -> {
+                                erro = ApiClient.mensagemErro(respIniciar)
+                                carregarPedidos(aoExpirar)
+                            }
+                        }
+                    }
+                }
             } catch (_: Exception) {
                 erro = ApiClient.mensagemFalha()
             } finally {

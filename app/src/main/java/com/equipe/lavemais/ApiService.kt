@@ -8,6 +8,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /** Rotas da lavamais-api (Spring Boot). A base é http://HOST:8080/api/ */
 interface ApiService {
@@ -33,6 +34,9 @@ interface ApiService {
 
     @POST("suportes")
     suspend fun abrirSuporte(@Body body: SuporteRequest): Response<SuporteResponse>
+
+    @POST("suportes")
+    suspend fun criarSuporte(@Body body: SuporteRequest): Response<SuporteResponse>
 
     @GET("notificacoes")
     suspend fun notificacoes(): Response<List<NotificacaoResponse>>
@@ -94,6 +98,9 @@ interface ApiService {
     suspend fun iniciarUtilizacao(@Path("id") id: Int): Response<UtilizacaoResponse>
 
     // ----- Pagamentos -----
+
+    @GET("pagamentos")
+    suspend fun buscarPagamentosPorUtilizacao(@Query("utilizacaoId") utilizacaoId: Int): Response<List<PagamentoResponse>>
 
     @POST("pagamentos")
     suspend fun criarPagamento(@Body body: PagamentoRequest): Response<PagamentoResponse>
