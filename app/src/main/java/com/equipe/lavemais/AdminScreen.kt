@@ -1,5 +1,8 @@
 package com.equipe.lavemais
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +13,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.LocalLaundryService
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +50,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,20 +63,28 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.round
 
-private val Roxo = Color(0xFF673AB7)
-private val Fundo = Color(0xFFFAFAFA)
-private val TextoEscuro = Color(0xFF212121)
-private val TextoCinza = Color(0xFF757575)
+// Paleta Oficial de Cores do Aplicativo (Padronizada com HomeScreen e PerfilScreen)
+private val backgroundColor = Color(0xFFFAFAFA)
+private val primaryPurple = Color(0xFF673AB7)
+private val lightPurpleCard = Color(0xFFF3E5F5)
+private val textDark = Color(0xFF212121)
+private val textGrey = Color(0xFF757575)
+private val strokeColor = Color(0xFFEEEEEE)
 
-/** Painel do administrador: cadastro e edição de máquinas e serviços. */
+/** Painel do administrador: cadastro e edição de máquinas, serviços e lavanderia. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminScreen(
@@ -99,29 +124,45 @@ fun AdminScreen(
     }
 
     Scaffold(
-        containerColor = Fundo,
+        containerColor = backgroundColor,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Painel do administrador", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        if (nome.isNotBlank()) Text(nome, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Painel Admin",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = textDark
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(lightPurpleCard)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Lila", color = primaryPurple, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        if (nome.isNotBlank()) {
+                            Text(nome, fontSize = 12.sp, color = textGrey)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Roxo,
-                    titleContentColor = Color.White
+                    containerColor = Color.White,
+                    titleContentColor = textDark
                 ),
                 actions = {
-                    TextButton(
-                        onClick = onAtualizar,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
-                    ) { Text("Atualizar") }
-                    TextButton(
-                        onClick = onSair,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
-                    ) { Text("Sair") }
+                    IconButton(onClick = onAtualizar) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = "Atualizar", tint = primaryPurple)
+                    }
+                    IconButton(onClick = onSair) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sair", tint = textDark)
+                    }
                 }
             )
         },
@@ -136,34 +177,68 @@ fun AdminScreen(
                         mostrarFormServico = true
                     }
                 },
-                containerColor = Roxo,
+                containerColor = primaryPurple,
                 contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(if (aba == 0) "Nova máquina" else "Novo serviço") }
+                text = { Text(if (aba == 0) "Nova máquina" else "Novo serviço", fontWeight = FontWeight.Bold) }
             )
         }
     ) { interno ->
         Column(modifier = Modifier.padding(interno).fillMaxSize()) {
-            TabRow(selectedTabIndex = aba) {
+            TabRow(
+                selectedTabIndex = aba,
+                containerColor = Color.White,
+                contentColor = primaryPurple,
+                indicator = { tabPositions ->
+                    if (aba < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[aba]),
+                            color = primaryPurple
+                        )
+                    }
+                }
+            ) {
                 Tab(
                     selected = aba == 0,
                     onClick = { aba = 0 },
-                    text = { Text("Máquinas (${maquinas.size})") }
+                    selectedContentColor = primaryPurple,
+                    unselectedContentColor = textGrey,
+                    text = {
+                        Text(
+                            "Máquinas (${maquinas.size})",
+                            fontWeight = if (aba == 0) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 )
                 Tab(
                     selected = aba == 1,
                     onClick = { aba = 1 },
-                    text = { Text("Serviços (${servicos.size})") }
+                    selectedContentColor = primaryPurple,
+                    unselectedContentColor = textGrey,
+                    text = {
+                        Text(
+                            "Serviços (${servicos.size})",
+                            fontWeight = if (aba == 1) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 )
                 Tab(
                     selected = aba == 2,
                     onClick = { aba = 2 },
-                    text = { Text("Lavanderia") }
+                    selectedContentColor = primaryPurple,
+                    unselectedContentColor = textGrey,
+                    text = {
+                        Text(
+                            "Unidade",
+                            fontWeight = if (aba == 2) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 )
             }
 
             if (carregando) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = Roxo)
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = primaryPurple)
             }
 
             LazyColumn(
@@ -173,7 +248,13 @@ fun AdminScreen(
             ) {
                 if (aba == 0) {
                     if (maquinas.isEmpty() && !carregando) {
-                        item { TextoVazio("Nenhuma máquina cadastrada. Toque em \"Nova máquina\" para começar.") }
+                        item {
+                            TextoVazio(
+                                icone = Icons.Outlined.LocalLaundryService,
+                                titulo = "Nenhuma máquina cadastrada",
+                                mensagem = "Toque no botão \"Nova máquina\" abaixo para cadastrar a primeira unidade de lavagem ou secagem."
+                            )
+                        }
                     }
                     items(maquinas, key = { it.id }) { maquina ->
                         MaquinaCard(
@@ -188,7 +269,13 @@ fun AdminScreen(
                     }
                 } else if (aba == 1) {
                     if (servicos.isEmpty() && !carregando) {
-                        item { TextoVazio("Nenhum serviço cadastrado. Toque em \"Novo serviço\" para começar.") }
+                        item {
+                            TextoVazio(
+                                icone = Icons.Outlined.Build,
+                                titulo = "Nenhum serviço cadastrado",
+                                mensagem = "Toque no botão \"Novo serviço\" abaixo para incluir tipos de ciclo, lavagem ou secagem."
+                            )
+                        }
                     }
                     items(servicos, key = { it.id }) { servico ->
                         ServicoCard(
@@ -261,16 +348,47 @@ fun AdminScreen(
 }
 
 @Composable
-private fun TextoVazio(texto: String) {
-    Text(
-        text = texto,
-        color = TextoCinza,
-        fontSize = 14.sp,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp)
-    )
+private fun TextoVazio(icone: ImageVector, titulo: String, mensagem: String) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, strokeColor),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icone,
+                contentDescription = null,
+                tint = textGrey,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = titulo,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = textDark
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = mensagem,
+                fontSize = 13.sp,
+                color = textGrey,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
+            )
+        }
+    }
 }
 
-private fun textoEstado(estado: String): String = when (estado) {
+private fun textoEstado(estado: String): String = when (estado.lowercase()) {
     "livre" -> "Livre"
     "em_uso" -> "Em uso"
     "manutencao" -> "Em manutenção"
@@ -278,11 +396,25 @@ private fun textoEstado(estado: String): String = when (estado) {
     else -> estado
 }
 
-private fun corEstado(estado: String): Color = when (estado) {
+private fun corEstado(estado: String): Color = when (estado.lowercase()) {
     "livre" -> Color(0xFF2E7D32)
     "em_uso" -> Color(0xFF1565C0)
-    "manutencao" -> Color(0xFFEF6C00)
+    "manutencao" -> Color(0xFFE65100)
     else -> Color(0xFFC62828)
+}
+
+private fun fundoEstado(estado: String): Color = when (estado.lowercase()) {
+    "livre" -> Color(0xFFE8F5E9)
+    "em_uso" -> Color(0xFFE3F2FD)
+    "manutencao" -> Color(0xFFFFF3E0)
+    else -> Color(0xFFFFEBEE)
+}
+
+private fun iconeEstado(estado: String): ImageVector = when (estado.lowercase()) {
+    "livre" -> Icons.Outlined.CheckCircle
+    "em_uso" -> Icons.Outlined.Schedule
+    "manutencao" -> Icons.Outlined.Build
+    else -> Icons.Outlined.Block
 }
 
 private fun numeroSimples(valor: Double): String =
@@ -300,30 +432,78 @@ private fun MaquinaCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, strokeColor),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(maquina.nome, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextoEscuro)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(kg(maquina.capacidade), fontSize = 13.sp, color = TextoCinza)
-                if (!maquina.descricao.isNullOrBlank()) {
-                    Text(maquina.descricao, fontSize = 13.sp, color = TextoCinza)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = maquina.nome,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = textDark,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Pílula de Status Colorida (Seguindo o design da HomeScreen)
+                    Row(
+                        modifier = Modifier
+                            .background(fundoEstado(maquina.estado), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            iconeEstado(maquina.estado),
+                            contentDescription = null,
+                            tint = corEstado(maquina.estado),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = textoEstado(maquina.estado),
+                            color = corEstado(maquina.estado),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = textoEstado(maquina.estado),
-                    color = corEstado(maquina.estado),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp
+                    text = kg(maquina.capacidade),
+                    fontSize = 13.sp,
+                    color = textGrey,
+                    fontWeight = FontWeight.Medium
                 )
+
+                if (!maquina.descricao.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = maquina.descricao,
+                        fontSize = 12.sp,
+                        color = textGrey,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 16.sp
+                    )
+                }
             }
+
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
+                    Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = textGrey)
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text("Editar") }, onClick = { menu = false; onEditar() })
@@ -354,28 +534,46 @@ private fun ServicoCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, strokeColor),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(servico.nome, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextoEscuro)
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    "${reais(servico.preco)}  ·  ${servico.duracaoEstimada} min",
+                    text = servico.nome,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = textDark,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${reais(servico.preco)}  ·  ${servico.duracaoEstimada} min",
                     fontSize = 13.sp,
-                    color = Roxo,
-                    fontWeight = FontWeight.SemiBold
+                    color = primaryPurple,
+                    fontWeight = FontWeight.Bold
                 )
                 if (!servico.descricao.isNullOrBlank()) {
-                    Text(servico.descricao, fontSize = 13.sp, color = TextoCinza)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = servico.descricao,
+                        fontSize = 12.sp,
+                        color = textGrey,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 16.sp
+                    )
                 }
             }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
+                    Icon(Icons.Default.MoreVert, contentDescription = "Mais opções", tint = textGrey)
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text("Editar") }, onClick = { menu = false; onEditar() })
@@ -402,6 +600,7 @@ private fun CampoAdmin(
         isError = erro != null,
         supportingText = { if (erro != null) Text(erro) },
         keyboardOptions = KeyboardOptions(keyboardType = teclado),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     )
 }
@@ -426,16 +625,18 @@ private fun LavanderiaForm(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, strokeColor),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Dados da lavanderia", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextoEscuro)
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Dados da unidade de lavanderia", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textDark)
             Text(
                 "O nome e o endereço aparecem na tela inicial e no topo das telas dos clientes.",
                 fontSize = 13.sp,
-                color = TextoCinza
+                color = textGrey,
+                lineHeight = 18.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             CampoAdmin("Nome da unidade", nome, { nome = it }, if (tentou) erroNome else null)
             CampoAdmin("Endereço *", endereco, { endereco = it }, if (tentou) erroEndereco else null)
             Spacer(modifier = Modifier.height(8.dp))
@@ -445,11 +646,11 @@ private fun LavanderiaForm(
                     if (erroNome == null && erroEndereco == null) onSalvar(nome, endereco)
                 },
                 enabled = !salvando,
-                colors = ButtonDefaults.buttonColors(containerColor = Roxo),
+                colors = ButtonDefaults.buttonColors(containerColor = primaryPurple),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text(if (salvando) "Salvando..." else "Salvar", fontWeight = FontWeight.Bold)
+                Text(if (salvando) "Salvando..." else "Salvar alterações", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -478,9 +679,14 @@ private fun MaquinaFormDialog(
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(if (atual == null) "Nova máquina" else "Editar máquina") },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(if (atual == null) "Nova máquina" else "Editar máquina", fontWeight = FontWeight.Bold, color = textDark) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CampoAdmin("Nome *", nome, { nome = it }, if (tentou) erroNome else null)
                 CampoAdmin(
                     "Capacidade (kg) *", capacidade, { capacidade = it },
@@ -495,9 +701,9 @@ private fun MaquinaFormDialog(
                 if (erroNome == null && erroCapacidade == null && erroDescricao == null && cap != null) {
                     onSalvar(nome.trim(), round(cap * 100) / 100.0, descricao)
                 }
-            }) { Text("Salvar", color = Roxo, fontWeight = FontWeight.Bold) }
+            }) { Text("Salvar", color = primaryPurple, fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = TextoCinza) } }
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = textGrey) } }
     )
 }
 
@@ -527,9 +733,14 @@ private fun ServicoFormDialog(
 
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(if (atual == null) "Novo serviço" else "Editar serviço") },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(if (atual == null) "Novo serviço" else "Editar serviço", fontWeight = FontWeight.Bold, color = textDark) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CampoAdmin("Nome *", nome, { nome = it }, if (tentou) erroNome else null)
                 CampoAdmin("Descrição", descricao, { descricao = it }, null)
                 CampoAdmin(
@@ -548,9 +759,9 @@ private fun ServicoFormDialog(
                 if (erroNome == null && erroPreco == null && erroDuracao == null && valor != null && minutos != null) {
                     onSalvar(nome.trim(), descricao, round(valor * 100) / 100.0, minutos)
                 }
-            }) { Text("Salvar", color = Roxo, fontWeight = FontWeight.Bold) }
+            }) { Text("Salvar", color = primaryPurple, fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = TextoCinza) } }
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = textGrey) } }
     )
 }
 
@@ -563,13 +774,15 @@ private fun ConfirmarExclusao(
 ) {
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text(titulo) },
-        text = { Text(texto) },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(titulo, fontWeight = FontWeight.Bold, color = textDark) },
+        text = { Text(texto, color = textGrey, fontSize = 13.sp, lineHeight = 18.sp) },
         confirmButton = {
             TextButton(onClick = onConfirmar) {
                 Text("Excluir", color = Color(0xFFC62828), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = TextoCinza) } }
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = textGrey) } }
     )
 }
