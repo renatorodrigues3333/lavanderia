@@ -1,0 +1,35 @@
+# Add project specific R8 rules here.
+# AGP will combine all keep rule files in src/main/keepRules to pass to R8
+#
+# For more details, see
+#   https://d.android.com/r/tools/r8/keep-rules
+
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
+
+# Modelos da API (ApiModelos.kt): o Gson usa o nome dos campos para ler/gravar o JSON,
+# então eles não podem ser renomeados nem removidos pelo R8.
+-keep class com.equipe.lavemais.LoginRequest { *; }
+-keep class com.equipe.lavemais.CadastroUsuarioRequest { *; }
+-keep class com.equipe.lavemais.AtualizarPerfilRequest { *; }
+-keep class com.equipe.lavemais.UsuarioLogadoApi { *; }
+-keep class com.equipe.lavemais.LoginResponse { *; }
+-keep class com.equipe.lavemais.UsuarioResponse { *; }
+-keep class com.equipe.lavemais.MaquinaResponse { *; }
+-keep class com.equipe.lavemais.ServicoResponse { *; }
+-keep class com.equipe.lavemais.UtilizacaoRequest { *; }
+-keep class com.equipe.lavemais.UtilizacaoResponse { *; }
+-keep class com.equipe.lavemais.PagamentoRequest { *; }
+-keep class com.equipe.lavemais.PagamentoResponse { *; }
+-keep class com.equipe.lavemais.MaquinaRequest { *; }
+-keep class com.equipe.lavemais.EstadoMaquinaRequest { *; }
+-keep class com.equipe.lavemais.ServicoRequest { *; }
+-keep class com.equipe.lavemais.LavanderiaRequest { *; }
+-keep class com.equipe.lavemais.LavanderiaResponse { *; }
+-keep class com.equipe.lavemais.SuporteRequest { *; }
+-keep class com.equipe.lavemais.SuporteResponse { *; }
+-keep class com.equipe.lavemais.NotificacaoResponse { *; }

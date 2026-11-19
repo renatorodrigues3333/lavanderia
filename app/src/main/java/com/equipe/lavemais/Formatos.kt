@@ -1,0 +1,135 @@
+package com.equipe.lavemais
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.LocalLaundryService
+import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.ui.graphics.vector.ImageVector
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
+// Funções de apoio para transformar os dados da API em textos das telas.
+
+private val localeBr: Locale = Locale.forLanguageTag("pt-BR")
+
+/** 32.0 -> "R$ 32,00" */
+fun reais(valor: Double): String = String.format(localeBr, "R$ %.2f", valor)
+
+/** 12.0 -> "12 kg", 7.5 -> "7,5 kg" */
+fun kg(valor: Double): String =
+    if (valor % 1.0 == 0.0) "${valor.toInt()} kg" else String.format(localeBr, "%.1f kg", valor)
+
+/** 1048 -> "LLA-1048" */
+fun codigoPedido(id: Int): String = String.format(Locale.US, "LLA-%04d", id)
+
+/** "fora_de_servico" -> "Fora de servico" */
+fun estadoTexto(estado: String): String =
+    estado.replace('_', ' ').trim().replaceFirstChar { it.uppercase() }
+
+fun MaquinaApi.status(): MachineStatus = when (estado) {
+    "livre" -> MachineStatus.LIVRE
+    "em_uso" -> MachineStatus.EM_USO
+    else -> MachineStatus.FORA_SERVICO
+}
+
+/** Serviço sugerido quando o usuário ainda não escolheu: "Lavagem e secagem", se existir. */
+fun servicoPadrao(servicos: List<ServicoApi>): ServicoApi? =
+    servicos.firstOrNull { it.nome.contains("lavagem", true) && it.nome.contains("secagem", true) }
+        ?: servicos.firstOrNull()
+
+fun iconeServico(servico: ServicoApi?): ImageVector {
+    val texto = "${servico?.nome} ${servico?.tipo}".lowercase()
+    val lava = "lavagem" in texto
+    val seca = "secagem" in texto
+    return when {
+        lava && seca -> Icons.Outlined.LocalLaundryService
+        seca -> Icons.Outlined.Air
+        lava -> Icons.Outlined.WaterDrop
+        else -> Icons.Outlined.LocalLaundryService
+    }
+}
+
+/** Fuso do servidor: a API envia datas sem fuso (LocalDateTime), no horário de Belém. */
+private val fusoServidor: TimeZone = TimeZone.getTimeZone("America/Belem")
+
+/**
+ * Lê as datas enviadas pela API, por exemplo
+ * "2026-10-18T09:12:00.123456", "2026-10-18T09:12:00-03:00" ou "2026-10-18 09:12:00".
+ * Datas sem fuso são lidas como horário de Belém.
+ */
+fun dataApi(texto: String?): Date? {
+    if (texto.isNullOrBlank()) return null
+    var t = texto.trim().replace(Regex("\\.\\d+"), "")
+    val utc = t.endsWith("Z")
+    t = t.removeSuffix("Z")
+
+    val padroes = listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss")
+    for (padrao in padroes) {
+        try {
+            val formato = SimpleDateFormat(padrao, Locale.US)
+            formato.isLenient = false
+            if (utc) formato.timeZone = TimeZone.getTimeZone("UTC")
+            else if (!padrao.endsWith("XXX")) formato.timeZone = fusoServidor
+            return formato.parse(t)
+        } catch (_: Exception) {
+            // tenta o próximo formato
+        }
+    }
+    return null
+}
+
+/** -> "18 out 2026 - 9h12" */
+fun dataHistorico(data: Date): String =
+    SimpleDateFormat("dd MMM yyyy - H'h'mm", localeBr).format(data).replace(".", "")
+
+/** -> "Outubro de 2026" */
+fun mesAno(data: Date): String =
+    SimpleDateFormat("MMMM 'de' yyyy", localeBr).format(data).replaceFirstChar { it.uppercase() }
+
+/** -> "Hoje, às 10:23" ou "19/10, às 10:23" */
+fun horarioPrevisto(data: Date): String {
+    val hoje = Calendar.getInstance()
+    val alvo = Calendar.getInstance().apply { time = data }
+    val hora = SimpleDateFormat("HH:mm", localeBr).format(data)
+    val mesmoDia = hoje.get(Calendar.YEAR) == alvo.get(Calendar.YEAR) &&
+        hoje.get(Calendar.DAY_OF_YEAR) == alvo.get(Calendar.DAY_OF_YEAR)
+    return if (mesmoDia) "Hoje, às $hora" else "${SimpleDateFormat("dd/MM", localeBr).format(data)}, às $hora"
+}
+
+/** "ana.lima@exemplo.com" -> "ana.l***@exemplo.com" */
+fun mascararEmail(email: String): String {
+    val arroba = email.indexOf('@')
+    if (arroba <= 0) return email
+    val visivel = email.substring(0, minOf(5, arroba))
+    return "$visivel***${email.substring(arroba)}"
+}
+
+/** "11998764820" -> "(11) 9****-4820" */
+fun mascararTelefone(telefone: String?): String {
+    val d = telefone.orEmpty().filter { it.isDigit() }
+    if (d.length < 10) return if (d.isEmpty()) "—" else telefone.orEmpty()
+    return "(${d.take(2)}) ${d[2]}****-${d.takeLast(4)}"
+}
+
+/** Dia no fuso do aparelho como número comparável: 18/11/2026 -> 20261118. */
+fun chaveDia(data: Date): Int {
+    val c = Calendar.getInstance().apply { time = data }
+    return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+}
+
+/** O seletor de datas devolve a meia-noite UTC do dia escolhido; converte para o mesmo formato de [chaveDia]. */
+fun chaveDiaUtc(millis: Long): Int {
+    val c = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
+    return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
+}
+
+/** Datas do seletor -> "10/11/2026 a 18/11/2026", ou "Todos os períodos" se nada foi escolhido. */
+fun periodoTexto(inicio: Long?, fim: Long?): String {
+    if (inicio == null) return "Todos os períodos"
+    val formato = SimpleDateFormat("dd/MM/yyyy", localeBr).apply { timeZone = TimeZone.getTimeZone("UTC") }
+    val primeiro = formato.format(Date(inicio))
+    return if (fim == null || fim == inicio) primeiro else "$primeiro a ${formato.format(Date(fim))}"
+}
