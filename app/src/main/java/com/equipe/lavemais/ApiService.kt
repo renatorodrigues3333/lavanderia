@@ -60,4 +60,18 @@ interface ApiService {
     /** Aprovação de demonstração (exige lavamais.pagamento.simulacao-habilitada=true na API). */
     @POST("pagamentos/{id}/simular-aprovacao")
     suspend fun simularAprovacao(@Path("id") id: Int): Response<PagamentoResponse>
+
+    // ----- Suporte e notificações -----
+
+    @POST("suportes")
+    suspend fun criarSuporte(@Body body: SuporteApiRequest): Response<SuporteApiResponse>
+
+    @GET("suportes")
+    suspend fun suportes(): Response<List<SuporteApiResponse>>
+
+    @GET("notificacoes")
+    suspend fun notificacoes(): Response<List<NotificacaoApiResponse>>
+
+    @PATCH("notificacoes/{id}/lida")
+    suspend fun marcarNotificacaoLida(@Path("id") id: Int): Response<NotificacaoApiResponse>
 }

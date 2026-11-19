@@ -27,6 +27,7 @@ object Rotas {
     const val ACOMPANHAMENTO = "acompanhamento"
     const val HISTORICO = "historico"
     const val PERFIL = "perfil"
+    const val NOTIFICACOES = "notificacoes"
 }
 
 /** Navegação da barra inferior: Início / Máquinas / Pedidos / Perfil. */
@@ -268,11 +269,14 @@ fun AppNavigation() {
         composable(Rotas.PERFIL) {
             LaunchedEffect(Unit) {
                 authVm.carregarPerfil(sessaoExpirada)
+                authVm.carregarSuportes(sessaoExpirada)
             }
             PerfilScreen(
                 nome = authVm.nome,
                 email = authVm.email,
                 telefone = authVm.usuario?.telefone,
+                suportes = authVm.suportes,
+                enviandoSuporte = authVm.enviandoSuporte,
                 salvandoPerfil = authVm.salvandoPerfil,
                 erroPerfil = authVm.erroPerfil,
                 onAbrirEdicao = { authVm.limparErroPerfil() },
@@ -289,6 +293,11 @@ fun AppNavigation() {
                         Toast.makeText(context, "Dados atualizados com sucesso.", Toast.LENGTH_SHORT).show()
                     }
                 },
+                onEnviarSuporte = { tema, descricao ->
+                    authVm.criarSuporte(tema, descricao, sessaoExpirada) {
+                        Toast.makeText(context, "Solicitação enviada com sucesso!", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onNavegar = { navController.abaPara(it) },
                 onVoltar = { navController.popBackStack() },
                 onSair = {
@@ -297,6 +306,19 @@ fun AppNavigation() {
                         navController.irParaLogin()
                     }
                 }
+            )
+        }
+
+        composable(Rotas.NOTIFICACOES) {
+            LaunchedEffect(Unit) {
+                authVm.carregarNotificacoes(sessaoExpirada)
+            }
+            NotificacoesScreen(
+                notificacoes = authVm.notificacoes,
+                carregando = authVm.carregando,
+                erro = authVm.erro,
+                onMarcarLida = { id -> authVm.marcarNotificacaoLida(id, sessaoExpirada) },
+                onVoltar = { navController.popBackStack() }
             )
         }
     }

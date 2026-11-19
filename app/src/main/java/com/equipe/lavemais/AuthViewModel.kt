@@ -24,6 +24,15 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     var usuario by mutableStateOf<UsuarioApi?>(null)
         private set
 
+    var notificacoes by mutableStateOf<List<NotificacaoApiResponse>>(emptyList())
+        private set
+
+    var suportes by mutableStateOf<List<SuporteApiResponse>>(emptyList())
+        private set
+
+    var enviandoSuporte by mutableStateOf(false)
+        private set
+
     val logado: Boolean get() = sessao.logado
     val nome: String get() = usuario?.nome ?: sessao.nome
     val email: String get() = usuario?.email ?: sessao.email
@@ -102,6 +111,83 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             } catch (_: Exception) {
                 // mantém os dados salvos na sessão
             }
+        }
+    }
+
+    fun carregarNotificacoes(aoExpirar: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resposta = api.notificacoes()
+                if (resposta.code() == 401) {
+                    sessao.limpar()
+                    usuario = null
+                    aoExpirar()
+                } else if (resposta.isSuccessful) {
+                    notificacoes = resposta.body().orEmpty()
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun marcarNotificacaoLida(id: Int, aoExpirar: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resposta = api.marcarNotificacaoLida(id)
+                if (resposta.code() == 401) {
+                    sessao.limpar()
+                    usuario = null
+                    aoExpirar()
+                } else if (resposta.isSuccessful) {
+                    carregarNotificacoes(aoExpirar)
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun carregarSuportes(aoExpirar: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resposta = api.suportes()
+                if (resposta.code() == 401) {
+                    sessao.limpar()
+                    usuario = null
+                    aoExpirar()
+                } else if (resposta.isSuccessful) {
+                    suportes = resposta.body().orEmpty().sortedByDescending { it.id }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun criarSuporte(
+        tema: String?,
+        descricao: String,
+        aoExpirar: () -> Unit,
+        aoConcluir: () -> Unit
+    ) {
+        if (enviandoSuporte) return
+        enviandoSuporte = true
+
+        viewModelScope.launch {
+            try {
+                val resposta = api.criarSuporte(SuporteApiRequest(tema = tema, descricao = descricao.trim()))
+                if (resposta.code() == 401) {
+                    sessao.limpar()
+                    usuario = null
+                    aoExpirar()
+                } else if (resposta.isSuccessful) {
+                    carregarSuportes(aoExpirar)
+                    aoConcluir()
+                } else {
+                    erro = ApiClient.mensagemErro(resposta)
+                }
+            } catch (_: Exception) {
+                erro = ApiClient.mensagemFalha()
+            }
+            enviandoSuporte = false
         }
     }
 

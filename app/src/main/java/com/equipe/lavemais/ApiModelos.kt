@@ -114,6 +114,34 @@ data class PagamentoResponse(
     val pagoEm: String? = null
 )
 
+// ----- Suporte e notificações -----
+
+data class SuporteApiRequest(
+    val tema: String? = null,
+    val descricao: String
+)
+
+data class SuporteApiResponse(
+    val id: Int = 0,
+    val usuarioId: Int = 0,
+    val tema: String? = null,
+    val descricao: String = "",
+    val estado: String = "",
+    val criadoEm: String? = null,
+    val resolvidoEm: String? = null
+)
+
+data class NotificacaoApiResponse(
+    val id: Int = 0,
+    val usuarioId: Int? = null,
+    val utilizacaoId: Int? = null,
+    val tipo: String = "",
+    val titulo: String = "",
+    val mensagem: String = "",
+    val lidoEm: String? = null,
+    val criadoEm: String? = null
+)
+
 data class MensagemResponse(val mensagem: String? = null, val id: Int? = null)
 
 // ---------------------------------------------------------------------------
