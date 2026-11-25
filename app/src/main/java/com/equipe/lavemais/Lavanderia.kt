@@ -5,7 +5,7 @@ import androidx.compose.runtime.compositionLocalOf
 /** Dados da lavanderia atual, disponíveis para todas as telas (preenchidos pelo AppNavigation). */
 val LocalLavanderia = compositionLocalOf { LavanderiaResponse() }
 
-private const val NOME_PADRAO = "Lila Lavanderia"
+private const val NOME_PADRAO = "Lave +"
 
 /** Nome da unidade, ou o nome do app enquanto o administrador não cadastrar. */
 fun LavanderiaResponse.nomeExibicao(): String = nome.ifBlank { NOME_PADRAO }

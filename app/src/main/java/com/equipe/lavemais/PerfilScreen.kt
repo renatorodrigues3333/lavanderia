@@ -207,7 +207,7 @@ fun PerfilScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Título
-            Text(text = "Seu espaço na Lila", color = textDark, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text(text = "Seu espaço na Lave +", color = textDark, fontWeight = FontWeight.Bold, fontSize = 24.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Seus dados, suas preferências e ajuda sempre que precisar.", color = textGrey, fontSize = 14.sp)
 
@@ -525,7 +525,7 @@ fun PerfilScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Lila Lavanderia · Versão 1.0.0", color = textGrey, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            Text(text = "Lave + · Versão 1.0.0", color = textGrey, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
             Spacer(modifier = Modifier.height(48.dp))
         }

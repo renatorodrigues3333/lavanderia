@@ -21,6 +21,8 @@ android {
         // Emulador: 10.0.2.2 aponta para o computador. Celular físico: use o IP do Mac na rede Wi-Fi.
         // API Spring Boot (lavamais-api), porta 8080
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/api/\"")
+        //buildConfigField("String", "API_BASE_URL", "\"http://localhost:8080/api/\"")
+
     }
 
     buildTypes {

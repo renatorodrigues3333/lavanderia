@@ -14,6 +14,7 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
 
     private val sessao = SessaoUsuario(app)
     private val api = ApiClient.service(app)
+    private val cartoes = ArmazenamentoCartoes(app)
 
     var servicos by mutableStateOf<List<ServicoApi>>(emptyList())
         private set
@@ -40,6 +41,14 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
 
     var erro by mutableStateOf<String?>(null)
         private set
+
+    /** true quando a última consulta aos pedidos falhou (sem rede, servidor fora do ar...). */
+    var falhaPedidos by mutableStateOf(false)
+        private set
+
+    fun limparErro() {
+        erro = null
+    }
 
     val servicoSelecionado: ServicoApi?
         get() = servicos.firstOrNull { it.id == servicoSelecionadoId } ?: servicoPadrao(servicos)
@@ -100,17 +109,28 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
                             .map { it.paraUtilizacao(maquinas, servicosPorId, agora) }
                             .sortedByDescending { it.id }
                         pedidosRecebidosEm = agora
+                        falhaPedidos = false
                     }
-                    else -> erro = ApiClient.mensagemErro(resposta)
+                    else -> {
+                        falhaPedidos = true
+                        erro = ApiClient.mensagemErro(resposta)
+                    }
                 }
             } catch (_: Exception) {
+                falhaPedidos = true
                 erro = ApiClient.mensagemFalha()
             }
         }
     }
 
-    /** Paga o pedido atual ou verifica pagamento existente (evitando duplicidades) e só inicia se efetivamente aprovado. */
-    fun pagar(metodo: String, aoExpirar: () -> Unit, aoConcluir: () -> Unit) {
+    /** Forma de pagamento usada num pedido (para o comprovante), se este aparelho a registrou. */
+    fun formaPagamento(pedidoId: Int): String? = cartoes.forma(pedidoId)
+
+    /**
+     * Paga o pedido atual ou verifica pagamento existente (evitando duplicidades) e só inicia se efetivamente aprovado.
+     * [forma] é só o texto mostrado no comprovante (ex.: "Cartão de crédito Visa •••• 4242").
+     */
+    fun pagar(metodo: String, forma: String, aoExpirar: () -> Unit, aoConcluir: () -> Unit) {
         val id = pedidoId
         if (id == null) {
             erro = "Nenhum pedido para pagar."
@@ -120,6 +140,7 @@ class PedidoViewModel(app: Application) : AndroidViewModel(app) {
 
         carregando = true
         erro = null
+        cartoes.guardarForma(id, forma)
 
         viewModelScope.launch {
             try {

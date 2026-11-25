@@ -121,7 +121,7 @@ fun CadastroScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Crie sua conta na Lila. É simples, seguro e sem papelada.",
+            text = "Crie sua conta na Lave +. É simples, seguro e sem papelada.",
             color = textGrey,
             fontSize = 16.sp
         )
@@ -240,7 +240,7 @@ fun CadastroScreen(
             )
             Column(modifier = Modifier.padding(top = 12.dp)) {
                 Text(
-                    text = "Concordo com o tratamento dos meus dados pessoais para criar minha conta e prestar os serviços da Lila. *",
+                    text = "Concordo com o tratamento dos meus dados pessoais para criar minha conta e prestar os serviços da Lave +. *",
                     fontSize = 12.sp,
                     color = textDark
                 )

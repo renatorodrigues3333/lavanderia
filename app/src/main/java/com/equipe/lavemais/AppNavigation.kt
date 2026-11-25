@@ -60,11 +60,13 @@ fun AppNavigation() {
     val adminVm: AdminViewModel = viewModel()
     val lavanderiaVm: LavanderiaViewModel = viewModel()
     val suporteVm: SuporteViewModel = viewModel()
+    val cartoesVm: CartoesViewModel = viewModel()
 
     val sessaoExpirada: () -> Unit = {
         pedidoVm.limpar()
         adminVm.limpar()
         suporteVm.limpar()
+        cartoesVm.limpar()
         navController.irParaLogin()
     }
 
@@ -153,6 +155,7 @@ fun AppNavigation() {
                 nome = authVm.nome,
                 maquinas = adminVm.maquinas,
                 servicos = adminVm.servicos,
+                chamados = adminVm.chamados,
                 lavanderia = lavanderiaVm.dados,
                 salvandoLavanderia = lavanderiaVm.salvando,
                 carregando = adminVm.carregando,
@@ -175,6 +178,8 @@ fun AppNavigation() {
                 },
                 onExcluirServico = { adminVm.excluirServico(it, sessaoExpirada) },
                 onSalvarLavanderia = { nome, endereco -> lavanderiaVm.salvar(nome, endereco, sessaoExpirada) },
+                onEstadoChamado = { id, estado -> adminVm.alterarEstadoChamado(id, estado, sessaoExpirada) },
+                onRemoverUsuario = { adminVm.removerUsuarioDoChamado(it, sessaoExpirada) },
                 onSair = {
                     authVm.sair {
                         adminVm.limpar()
@@ -253,6 +258,9 @@ fun AppNavigation() {
         }
 
         composable(Rotas.PAGAMENTO) {
+            LaunchedEffect(Unit) {
+                cartoesVm.carregar()
+            }
             val maquina = pedidoVm.pedidoAtual?.maquina ?: pedidoVm.maquinaSelecionada?.identificacao.orEmpty()
             val servico = pedidoVm.servicoSelecionado
             val valor = pedidoVm.pedidoAtual?.valor_total ?: servico?.preco ?: 0.0
@@ -264,10 +272,16 @@ fun AppNavigation() {
                 valor = valor,
                 descricao = "$maquina · $nomeServico · $duracao min",
                 enviando = pedidoVm.carregando,
+                erro = pedidoVm.erro,
+                onLimparErro = { pedidoVm.limparErro() },
                 onNavegar = { navController.abaPara(it) },
                 onVoltar = { navController.popBackStack() },
-                onContinuar = { metodo ->
-                    pedidoVm.pagar(metodo, sessaoExpirada) {
+                cartaoCredito = cartoesVm.credito,
+                cartaoDebito = cartoesVm.debito,
+                onSalvarCartao = { tipo, cartao -> cartoesVm.salvar(tipo, cartao) },
+                onRemoverCartao = { tipo -> cartoesVm.remover(tipo) },
+                onContinuar = { metodo, forma ->
+                    pedidoVm.pagar(metodo, forma, sessaoExpirada) {
                         // Pedido pago não volta para a tela de pagamento
                         navController.navigate(Rotas.ACOMPANHAMENTO) {
                             popUpTo(Rotas.PAGAMENTO) { inclusive = true }
@@ -284,6 +298,8 @@ fun AppNavigation() {
                 pedidoVm.carregarPedidos(sessaoExpirada)
                 while (true) {
                     delay(30_000)
+                    // Busca o pedido de novo: o servidor conclui o ciclo sozinho
+                    pedidoVm.carregarPedidos(sessaoExpirada)
                     agora = System.currentTimeMillis()
                 }
             }
@@ -296,9 +312,12 @@ fun AppNavigation() {
                 seg + (agora - pedidoVm.pedidosRecebidosEm) / 1000
             }
             val decorrido = decorridoSeg?.let { (it / 60).toInt() } ?: 0
-            val termino = decorridoSeg?.let {
-                horarioPrevisto(Date(agora + (duracao * 60L - it).coerceAtLeast(0) * 1000))
-            } ?: "—"
+            val termino = when {
+                pedido != null && pedido.estado == "concluida" -> dataApi(pedido.fim_real)?.let { dataHistorico(it) } ?: "—"
+                decorridoSeg != null ->
+                    horarioPrevisto(Date(agora + (duracao * 60L - decorridoSeg).coerceAtLeast(0) * 1000))
+                else -> "—"
+            }
 
             AcompanhamentoScreen(
                 codigo = pedidoVm.pedidoId?.let { codigoPedido(it) } ?: "",
@@ -309,6 +328,11 @@ fun AppNavigation() {
                 duracaoMin = duracao,
                 decorridoMin = decorrido,
                 terminoPrevisto = termino,
+                pedido = pedido,
+                formaPagamento = pedido?.let { pedidoVm.formaPagamento(it.id) },
+                estadoApi = pedido?.estado ?: "em_andamento",
+                falhaAtualizacao = pedidoVm.falhaPedidos,
+                onAtualizar = { pedidoVm.carregarPedidos(sessaoExpirada) },
                 onNavegar = { navController.abaPara(it) },
                 onVoltar = { navController.popBackStack() }
             )
@@ -322,6 +346,7 @@ fun AppNavigation() {
                 pedidos = pedidoVm.pedidos,
                 onNavegar = { navController.abaPara(it) },
                 onVoltar = { navController.popBackStack() },
+                formaPagamentoDe = { pedidoVm.formaPagamento(it) },
                 onUsarReferencia = { pedido ->
                     // Só pré-seleciona máquina e serviço; nada é criado antes de "Confirmar"
                     pedidoVm.usarComoReferencia(pedido)
@@ -382,6 +407,7 @@ fun AppNavigation() {
                     authVm.sair {
                         pedidoVm.limpar()
                         suporteVm.limpar()
+                        cartoesVm.limpar()
                         navController.irParaLogin()
                     }
                 }

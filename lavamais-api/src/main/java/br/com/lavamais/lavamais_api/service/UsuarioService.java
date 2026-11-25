@@ -9,11 +9,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.lavamais.lavamais_api.config.SessaoUsuario;
 import br.com.lavamais.lavamais_api.dto.AtualizarPerfilRequest;
 import br.com.lavamais.lavamais_api.dto.CadastroUsuarioRequest;
 import br.com.lavamais.lavamais_api.dto.UsuarioResponse;
+import br.com.lavamais.lavamais_api.entity.EstadoUtilizacao;
 import br.com.lavamais.lavamais_api.entity.Usuario;
+import br.com.lavamais.lavamais_api.repository.NotificacaoRepository;
+import br.com.lavamais.lavamais_api.repository.RecuperacaoSenhaRepository;
 import br.com.lavamais.lavamais_api.repository.UsuarioRepository;
+import br.com.lavamais.lavamais_api.repository.UtilizacaoRepository;
 
 @Service
 @Transactional
@@ -22,13 +27,49 @@ public class UsuarioService {
     private final UsuarioRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final String emailAdmin;
+    private final NotificacaoRepository notificacaoRepository;
+    private final RecuperacaoSenhaRepository recuperacaoSenhaRepository;
+    private final UtilizacaoRepository utilizacaoRepository;
+    private final AuditoriaService auditoria;
 
     public UsuarioService(UsuarioRepository repository,
                           PasswordEncoder passwordEncoder,
-                          @Value("${lavamais.admin.email:}") String emailAdmin) {
+                          @Value("${lavamais.admin.email:}") String emailAdmin,
+                          NotificacaoRepository notificacaoRepository,
+                          RecuperacaoSenhaRepository recuperacaoSenhaRepository,
+                          UtilizacaoRepository utilizacaoRepository,
+                          AuditoriaService auditoria) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.emailAdmin = emailAdmin;
+        this.notificacaoRepository = notificacaoRepository;
+        this.recuperacaoSenhaRepository = recuperacaoSenhaRepository;
+        this.utilizacaoRepository = utilizacaoRepository;
+        this.auditoria = auditoria;
+    }
+
+    /**
+     * Remove a conta de um cliente (pedido de exclusão de dados). Apaga o cadastro, as notificações
+     * e os códigos de recuperação de senha. Pedidos, pagamentos e chamados ficam como histórico,
+     * já sem nome, e-mail ou telefone ligados a eles.
+     */
+    public void remover(Integer id) {
+        SessaoUsuario.exigirAdmin();
+        Usuario u = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        if (!emailAdmin.isBlank() && emailAdmin.equalsIgnoreCase(u.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A conta do administrador não pode ser removida");
+        }
+        if (utilizacaoRepository.existsByUsuarioIdAndEstado(id, EstadoUtilizacao.em_andamento)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "O usuário tem um ciclo em andamento. Aguarde o término para remover a conta");
+        }
+
+        notificacaoRepository.deleteByUsuarioId(id);
+        recuperacaoSenhaRepository.deleteByUsuarioId(id);
+        repository.delete(u);
+        auditoria.registrar(SessaoUsuario.id(), "remover_usuario", "usuario", id, null);
     }
 
     /** O cadastro público só cria clientes; o e-mail do administrador nunca pode ser usado aqui. */

@@ -120,7 +120,7 @@ fun LoginScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Entre na Lila Lavanderia e cuide de tudo pelo celular, sem filas e sem complicação.",
+            text = "Entre na Lave+ Lavanderia e cuide de tudo pelo celular, sem filas e sem complicação.",
             color = textGrey,
             fontSize = 16.sp,
             lineHeight = 24.sp
@@ -222,7 +222,7 @@ fun LoginScreen(
         ) {
             Text(
                 text = buildAnnotatedString {
-                    append("Primeira vez na Lila? ")
+                    append("Primeira vez na Lave +? ")
                     withStyle(style = SpanStyle(color = primaryPurple, fontWeight = FontWeight.Bold)) {
                         append("Criar conta")
                     }

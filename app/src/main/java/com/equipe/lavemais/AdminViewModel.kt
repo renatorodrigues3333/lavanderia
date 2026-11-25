@@ -21,6 +21,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     var servicos by mutableStateOf<List<ServicoResponse>>(emptyList())
         private set
 
+    /** Chamados de todos os clientes (suporte, reembolso e exclusão de conta). */
+    var chamados by mutableStateOf<List<SuporteResponse>>(emptyList())
+        private set
+
     var carregando by mutableStateOf(false)
         private set
 
@@ -35,6 +39,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     fun limpar() {
         maquinas = emptyList()
         servicos = emptyList()
+        chamados = emptyList()
         mensagem = null
     }
 
@@ -92,6 +97,26 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         executar(aoExpirar, "Serviço excluído.") { api.excluirServico(id) }
     }
 
+    // ----- Chamados -----
+
+    fun alterarEstadoChamado(id: Int, estado: String, aoExpirar: () -> Unit) {
+        executar(aoExpirar, "Chamado atualizado.") {
+            api.alterarEstadoSuporte(id, EstadoSuporteRequest(estado))
+        }
+    }
+
+    /** Pedido de exclusão de dados: apaga a conta do cliente e marca o chamado como resolvido. */
+    fun removerUsuarioDoChamado(chamado: SuporteResponse, aoExpirar: () -> Unit) {
+        executar(aoExpirar, "Usuário removido e solicitação concluída.") {
+            val remocao = api.removerUsuario(chamado.usuarioId)
+            if (remocao.isSuccessful) {
+                api.alterarEstadoSuporte(chamado.id, EstadoSuporteRequest("resolvido"))
+            } else {
+                remocao
+            }
+        }
+    }
+
     // ----- Internos -----
 
     /** Faz a chamada e, se der certo, avisa e recarrega as listas. */
@@ -115,15 +140,19 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Busca máquinas e serviços; devolve false se alguma chamada falhou. */
+    /** Busca máquinas, serviços e chamados; devolve false se alguma chamada falhou. */
     private suspend fun buscarListas(aoExpirar: () -> Unit): Boolean {
         val listaMaquinas = api.maquinas()
         if (!listaMaquinas.deuCerto(aoExpirar)) return false
         val listaServicos = api.servicos()
         if (!listaServicos.deuCerto(aoExpirar)) return false
 
+        val listaChamados = api.suportes()
+        if (!listaChamados.deuCerto(aoExpirar)) return false
+
         maquinas = listaMaquinas.body().orEmpty()
         servicos = listaServicos.body().orEmpty()
+        chamados = listaChamados.body().orEmpty()
         return true
     }
 

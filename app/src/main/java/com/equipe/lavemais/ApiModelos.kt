@@ -97,12 +97,18 @@ typealias SuporteApiRequest = SuporteRequest
 data class SuporteResponse(
     val id: Int = 0,
     val usuarioId: Int = 0,
+    /** Quem abriu o chamado (o administrador vê; nulo se a conta já foi removida). */
+    val usuarioNome: String? = null,
+    val usuarioEmail: String? = null,
     val tema: String? = null,
     val descricao: String = "",
     val estado: String = "",
     val criadoEm: String? = null,
     val resolvidoEm: String? = null
 )
+
+/** Novo estado do chamado (só o administrador altera). */
+data class EstadoSuporteRequest(val estado: String)
 
 typealias SuporteApiResponse = SuporteResponse
 

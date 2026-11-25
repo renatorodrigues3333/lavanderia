@@ -2,6 +2,8 @@ package br.com.lavamais.lavamais_api.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,8 +18,10 @@ import br.com.lavamais.lavamais_api.dto.SuporteResponse;
 import br.com.lavamais.lavamais_api.entity.EstadoSuporte;
 import br.com.lavamais.lavamais_api.entity.MensagemSuporte;
 import br.com.lavamais.lavamais_api.entity.Suporte;
+import br.com.lavamais.lavamais_api.entity.Usuario;
 import br.com.lavamais.lavamais_api.repository.MensagemSuporteRepository;
 import br.com.lavamais.lavamais_api.repository.SuporteRepository;
+import br.com.lavamais.lavamais_api.repository.UsuarioRepository;
 
 @Service
 @Transactional
@@ -25,10 +29,13 @@ public class SuporteService {
 
     private final SuporteRepository repository;
     private final MensagemSuporteRepository mensagemRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    public SuporteService(SuporteRepository repository, MensagemSuporteRepository mensagemRepository) {
+    public SuporteService(SuporteRepository repository, MensagemSuporteRepository mensagemRepository,
+                          UsuarioRepository usuarioRepository) {
         this.repository = repository;
         this.mensagemRepository = mensagemRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     /** O chamado sempre pertence a quem está logado. */
@@ -37,14 +44,14 @@ public class SuporteService {
         s.setUsuarioId(SessaoUsuario.id());
         s.setTema(req.tema());
         s.setDescricao(req.descricao());
-        return SuporteResponse.de(repository.save(s));
+        return paraResposta(repository.save(s));
     }
 
     @Transactional(readOnly = true)
     public SuporteResponse buscar(Integer id) {
         Suporte s = obter(id);
         SessaoUsuario.exigirDonoOuAdmin(s.getUsuarioId());
-        return SuporteResponse.de(s);
+        return paraResposta(s);
     }
 
     /** Cliente: só os próprios. Administrador: os do usuário informado, ou todos. */
@@ -58,7 +65,7 @@ public class SuporteService {
         } else {
             lista = repository.findByUsuarioIdOrderByCriadoEmDesc(SessaoUsuario.id());
         }
-        return lista.stream().map(SuporteResponse::de).toList();
+        return paraRespostas(lista);
     }
 
     public SuporteResponse alterarEstado(Integer id, EstadoSuporte novo) {
@@ -68,7 +75,7 @@ public class SuporteService {
         if (novo == EstadoSuporte.resolvido && s.getResolvidoEm() == null) {
             s.setResolvidoEm(LocalDateTime.now());
         }
-        return SuporteResponse.de(repository.save(s));
+        return paraResposta(repository.save(s));
     }
 
     public MensagemSuporteResponse enviarMensagem(Integer suporteId, MensagemSuporteRequest req) {
@@ -101,6 +108,18 @@ public class SuporteService {
             m.setLidaEm(LocalDateTime.now());
         }
         return MensagemSuporteResponse.de(mensagemRepository.save(m));
+    }
+
+    /** Junta o nome e o e-mail de quem abriu o chamado, para o administrador saber quem é. */
+    private SuporteResponse paraResposta(Suporte s) {
+        return SuporteResponse.de(s, usuarioRepository.findById(s.getUsuarioId()).orElse(null));
+    }
+
+    private List<SuporteResponse> paraRespostas(List<Suporte> lista) {
+        Map<Integer, Usuario> usuarios = usuarioRepository
+                .findAllById(lista.stream().map(Suporte::getUsuarioId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(Usuario::getId, u -> u));
+        return lista.stream().map(s -> SuporteResponse.de(s, usuarios.get(s.getUsuarioId()))).toList();
     }
 
     private Suporte obter(Integer id) {
