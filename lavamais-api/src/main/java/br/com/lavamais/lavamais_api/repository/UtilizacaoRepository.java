@@ -16,6 +16,7 @@ public interface UtilizacaoRepository extends JpaRepository<Utilizacao, Integer>
     List<Utilizacao> findByUsuarioIdOrderByCriadoEmDesc(Integer usuarioId);
     List<Utilizacao> findAllByOrderByCriadoEmDesc();
     List<Utilizacao> findByEstado(EstadoUtilizacao estado);
+    boolean existsByUsuarioIdAndEstado(Integer usuarioId, EstadoUtilizacao estado);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM Utilizacao u WHERE u.id = :id")

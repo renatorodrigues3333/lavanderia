@@ -10,4 +10,5 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, Intege
     /** Notificações do usuário e as gerais (usuario_id nulo). */
     List<Notificacao> findByUsuarioIdOrUsuarioIdIsNullOrderByCriadoEmDesc(Integer usuarioId);
     List<Notificacao> findAllByOrderByCriadoEmDesc();
+    void deleteByUsuarioId(Integer usuarioId);
 }

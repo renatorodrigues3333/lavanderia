@@ -78,7 +78,7 @@ public class SegurancaConfig {
                         // só o administrador
                         .requestMatchers(HttpMethod.POST, "/api/maquinas/**", "/api/servicos/**", "/api/notificacoes").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/maquinas/**", "/api/servicos/**", "/api/lavanderia").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/maquinas/**", "/api/servicos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/maquinas/**", "/api/servicos/**", "/api/usuarios/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/maquinas/**", "/api/pagamentos/*/estado", "/api/suportes/*/estado").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/maquinas/*/historico", "/api/auditoria/**").hasRole("ADMIN")
                         // todo o resto exige login

@@ -28,7 +28,9 @@ fun HistoricoScreen(
     onNavegar: (String) -> Unit = {},
     onVoltar: () -> Unit = {},
     /** Começa um novo pedido com a máquina e o serviço do pedido escolhido. */
-    onUsarReferencia: (UtilizacaoApi) -> Unit = {}
+    onUsarReferencia: (UtilizacaoApi) -> Unit = {},
+    /** Texto da forma de pagamento de um pedido (ex.: "Pix"), quando conhecida. */
+    formaPagamentoDe: (Int) -> String? = { null }
 ) {
     var pedidoDetalhe by remember { mutableStateOf<UtilizacaoApi?>(null) }
     var filtroSelecionado by remember { mutableStateOf("Todos") }
@@ -56,7 +58,11 @@ fun HistoricoScreen(
     val lightPurpleCard = Color(0xFFF3E5F5)
 
     pedidoDetalhe?.let { pedido ->
-        DetalhePedidoDialog(pedido = pedido, onFechar = { pedidoDetalhe = null })
+        DetalhePedidoDialog(
+            pedido = pedido,
+            formaPagamento = formaPagamentoDe(pedido.id),
+            onFechar = { pedidoDetalhe = null }
+        )
     }
 
     if (mostrarSeletor) {
@@ -481,7 +487,7 @@ private fun SeletorPeriodoDialog(
 
 /** Comprovante do pedido (ou detalhe da tentativa, quando não houve ciclo). */
 @Composable
-private fun DetalhePedidoDialog(pedido: UtilizacaoApi, onFechar: () -> Unit) {
+fun DetalhePedidoDialog(pedido: UtilizacaoApi, formaPagamento: String? = null, onFechar: () -> Unit) {
     val naoPago = categoriaPedido(pedido.estado) == CategoriaPedido.NAO_PAGO
 
     AlertDialog(
@@ -494,6 +500,7 @@ private fun DetalhePedidoDialog(pedido: UtilizacaoApi, onFechar: () -> Unit) {
                 LinhaDetalhe("Máquina", pedido.maquina)
                 LinhaDetalhe("Serviço", "${pedido.servico} - ${pedido.duracao_estimada} min")
                 LinhaDetalhe("Valor", reais(pedido.valor_total))
+                if (!formaPagamento.isNullOrBlank()) LinhaDetalhe("Pagamento", formaPagamento)
                 LinhaDetalhe("Situação", estadoTexto(pedido.estado))
                 dataApi(pedido.inicio_real)?.let { LinhaDetalhe("Início do ciclo", dataHistorico(it)) }
                 dataApi(pedido.fim_real)?.let { LinhaDetalhe("Término do ciclo", dataHistorico(it)) }

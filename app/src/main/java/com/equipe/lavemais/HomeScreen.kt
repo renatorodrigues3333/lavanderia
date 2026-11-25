@@ -393,7 +393,7 @@ fun HomeScreen(
 
         // Rodapé descritivo
         Text(
-            text = "Lila Lavanderia · Ambiente demonstrativo. Todos os dados deste aplicativo são fictícios.",
+            text = "Lave + · Ambiente demonstrativo. Todos os dados deste aplicativo são fictícios.",
             color = textGrey,
             fontSize = 10.sp,
             modifier = Modifier.fillMaxWidth(),

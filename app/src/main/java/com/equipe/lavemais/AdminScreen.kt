@@ -46,6 +46,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -91,6 +92,7 @@ fun AdminScreen(
     nome: String,
     maquinas: List<MaquinaResponse>,
     servicos: List<ServicoResponse>,
+    chamados: List<SuporteResponse>,
     lavanderia: LavanderiaResponse,
     salvandoLavanderia: Boolean,
     carregando: Boolean,
@@ -103,6 +105,8 @@ fun AdminScreen(
     onSalvarServico: (Int?, String, String, Double, Int) -> Unit,
     onExcluirServico: (Int) -> Unit,
     onSalvarLavanderia: (String, String) -> Unit,
+    onEstadoChamado: (Int, String) -> Unit,
+    onRemoverUsuario: (SuporteResponse) -> Unit,
     onSair: () -> Unit
 ) {
     var aba by remember { mutableIntStateOf(0) }
@@ -115,6 +119,9 @@ fun AdminScreen(
     var mostrarFormServico by remember { mutableStateOf(false) }
     var servicoEditando by remember { mutableStateOf<ServicoResponse?>(null) }
     var servicoExcluindo by remember { mutableStateOf<ServicoResponse?>(null) }
+    var chamadoRemovendo by remember { mutableStateOf<SuporteResponse?>(null) }
+
+    val chamadosAbertos = chamados.count { it.estado == "aberto" || it.estado == "em_atendimento" }
 
     LaunchedEffect(mensagem) {
         if (mensagem != null) {
@@ -144,7 +151,7 @@ fun AdminScreen(
                                     .background(lightPurpleCard)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text("Lila", color = primaryPurple, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("Lave +", color = primaryPurple, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                         if (nome.isNotBlank()) {
@@ -167,7 +174,7 @@ fun AdminScreen(
             )
         },
         floatingActionButton = {
-            if (aba != 2) ExtendedFloatingActionButton(
+            if (aba < 2) ExtendedFloatingActionButton(
                 onClick = {
                     if (aba == 0) {
                         maquinaEditando = null
@@ -186,10 +193,11 @@ fun AdminScreen(
         }
     ) { interno ->
         Column(modifier = Modifier.padding(interno).fillMaxSize()) {
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = aba,
                 containerColor = Color.White,
                 contentColor = primaryPurple,
+                edgePadding = 0.dp,
                 indicator = { tabPositions ->
                     if (aba < tabPositions.size) {
                         TabRowDefaults.SecondaryIndicator(
@@ -232,6 +240,18 @@ fun AdminScreen(
                         Text(
                             "Unidade",
                             fontWeight = if (aba == 2) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                )
+                Tab(
+                    selected = aba == 3,
+                    onClick = { aba = 3 },
+                    selectedContentColor = primaryPurple,
+                    unselectedContentColor = textGrey,
+                    text = {
+                        Text(
+                            if (chamadosAbertos > 0) "Chamados ($chamadosAbertos)" else "Chamados",
+                            fontWeight = if (aba == 3) FontWeight.Bold else FontWeight.Medium
                         )
                     }
                 )
@@ -287,12 +307,29 @@ fun AdminScreen(
                             onExcluir = { servicoExcluindo = servico }
                         )
                     }
-                } else {
+                } else if (aba == 2) {
                     item {
                         LavanderiaForm(
                             atual = lavanderia,
                             salvando = salvandoLavanderia,
                             onSalvar = onSalvarLavanderia
+                        )
+                    }
+                } else {
+                    if (chamados.isEmpty() && !carregando) {
+                        item {
+                            TextoVazio(
+                                icone = Icons.Outlined.CheckCircle,
+                                titulo = "Nenhum chamado por aqui",
+                                mensagem = "Quando um cliente enviar uma solicitação de suporte, reembolso ou exclusão de conta, ela aparece nesta lista."
+                            )
+                        }
+                    }
+                    items(chamados, key = { it.id }) { chamado ->
+                        ChamadoCard(
+                            chamado = chamado,
+                            onEstado = { onEstadoChamado(chamado.id, it) },
+                            onRemoverUsuario = { chamadoRemovendo = chamado }
                         )
                     }
                 }
@@ -330,6 +367,29 @@ fun AdminScreen(
             onConfirmar = {
                 onExcluirMaquina(alvo.id)
                 maquinaExcluindo = null
+            }
+        )
+    }
+
+    chamadoRemovendo?.let { alvo ->
+        AlertDialog(
+            onDismissRequest = { chamadoRemovendo = null },
+            title = { Text("Remover ${alvo.usuarioNome}?") },
+            text = {
+                Text(
+                    "A conta ${alvo.usuarioEmail} será apagada, junto com as notificações e os códigos de " +
+                        "recuperação de senha. Pedidos, pagamentos e chamados ficam no histórico, sem nome " +
+                        "nem e-mail. Essa ação não pode ser desfeita."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemoverUsuario(alvo)
+                    chamadoRemovendo = null
+                }) { Text("Remover", color = Color(0xFFC62828), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { chamadoRemovendo = null }) { Text("Cancelar", color = textGrey) }
             }
         )
     }
@@ -785,4 +845,104 @@ private fun ConfirmarExclusao(
         },
         dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar", color = textGrey) } }
     )
+}
+
+private data class VisualChamado(val texto: String, val cor: Color, val fundo: Color, val icone: ImageVector)
+
+private fun visualChamado(estado: String): VisualChamado = when (estado) {
+    "aberto" -> VisualChamado("Pendente", Color(0xFFE65100), Color(0xFFFFF3E0), Icons.Outlined.Schedule)
+    "em_atendimento" -> VisualChamado("Em atendimento", Color(0xFF1565C0), Color(0xFFE3F2FD), Icons.Outlined.Build)
+    "resolvido" -> VisualChamado("Resolvido", Color(0xFF2E7D32), Color(0xFFE8F5E9), Icons.Outlined.CheckCircle)
+    else -> VisualChamado("Cancelado", Color(0xFFC62828), Color(0xFFFFEBEE), Icons.Outlined.Block)
+}
+
+/** Chamado aberto por um cliente: suporte, reembolso ou pedido de exclusão de conta. */
+@Composable
+private fun ChamadoCard(
+    chamado: SuporteResponse,
+    onEstado: (String) -> Unit,
+    onRemoverUsuario: () -> Unit
+) {
+    val visual = visualChamado(chamado.estado)
+    val encerrado = chamado.estado == "resolvido" || chamado.estado == "cancelado"
+    val exclusao = chamado.tema == TEMA_EXCLUSAO_CONTA
+    val usuarioExiste = chamado.usuarioNome != null
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, strokeColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = chamado.tema?.takeIf { it.isNotBlank() } ?: "Chamado #${chamado.id}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = textDark,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier
+                        .background(visual.fundo, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(visual.icone, contentDescription = null, tint = visual.cor, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = visual.texto, color = visual.cor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (usuarioExiste) "${chamado.usuarioNome} · ${chamado.usuarioEmail}" else "Usuário removido",
+                fontSize = 13.sp,
+                color = textGrey
+            )
+            dataApi(chamado.criadoEm)?.let {
+                Text(text = dataHistorico(it), fontSize = 12.sp, color = textGrey)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = chamado.descricao, fontSize = 14.sp, color = textDark, lineHeight = 20.sp)
+
+            if (!encerrado) {
+                Spacer(modifier = Modifier.height(12.dp))
+                if (exclusao && usuarioExiste) {
+                    Button(
+                        onClick = onRemoverUsuario,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Text("Remover usuário e concluir", fontWeight = FontWeight.Bold)
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (chamado.estado == "aberto") {
+                        TextButton(onClick = { onEstado("em_atendimento") }) {
+                            Text("Atender", color = primaryPurple, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (!exclusao || !usuarioExiste) {
+                        TextButton(onClick = { onEstado("resolvido") }) {
+                            Text("Resolver", color = Color(0xFF2E7D32), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    TextButton(onClick = { onEstado("cancelado") }) {
+                        Text(if (exclusao) "Recusar" else "Cancelar", color = Color(0xFFC62828), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
 }

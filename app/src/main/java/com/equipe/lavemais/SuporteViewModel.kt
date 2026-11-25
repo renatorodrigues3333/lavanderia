@@ -8,6 +8,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
+/** Assunto do chamado de exclusão de conta; o administrador usa o mesmo texto para reconhecê-lo. */
+const val TEMA_EXCLUSAO_CONTA = "Exclusão de conta e dados"
+
 /** Solicitações de suporte/reembolso e notificações do cliente. */
 class SuporteViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -114,7 +117,7 @@ class SuporteViewModel(app: Application) : AndroidViewModel(app) {
     /** A API não apaga contas sozinha, então o pedido de exclusão vira um chamado para a equipe. */
     fun solicitarExclusaoConta(aoExpirar: () -> Unit, aoConcluir: () -> Unit) {
         abrirSolicitacao(
-            tema = "Exclusão de conta e dados",
+            tema = TEMA_EXCLUSAO_CONTA,
             descricao = "Solicito a exclusão da minha conta e dos meus dados pessoais.",
             aoExpirar = aoExpirar,
             aoConcluir = aoConcluir

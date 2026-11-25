@@ -35,6 +35,14 @@ interface ApiService {
     @POST("suportes")
     suspend fun abrirSuporte(@Body body: SuporteRequest): Response<SuporteResponse>
 
+    /** Administrador: aberto -> em_atendimento -> resolvido (ou cancelado). */
+    @PATCH("suportes/{id}/estado")
+    suspend fun alterarEstadoSuporte(@Path("id") id: Int, @Body body: EstadoSuporteRequest): Response<SuporteResponse>
+
+    /** Administrador: apaga a conta do cliente (pedido de exclusão de dados). */
+    @DELETE("usuarios/{id}")
+    suspend fun removerUsuario(@Path("id") id: Int): Response<Unit>
+
     @POST("suportes")
     suspend fun criarSuporte(@Body body: SuporteRequest): Response<SuporteResponse>
 

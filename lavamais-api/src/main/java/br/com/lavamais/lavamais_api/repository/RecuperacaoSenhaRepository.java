@@ -10,6 +10,7 @@ import br.com.lavamais.lavamais_api.entity.RecuperacaoSenha;
 
 public interface RecuperacaoSenhaRepository extends JpaRepository<RecuperacaoSenha, Integer> {
     Optional<RecuperacaoSenha> findFirstByUsuarioIdOrderByCriadoEmDesc(Integer usuarioId);
+    void deleteByUsuarioId(Integer usuarioId);
     List<RecuperacaoSenha> findByUsuarioIdAndConcluidoEmIsNullAndExpiraEmAfterOrderByCriadoEmDesc(Integer usuarioId, LocalDateTime agora);
     List<RecuperacaoSenha> findByUtilizadoEmIsNotNullAndConcluidoEmIsNullAndExpiraEmAfterOrderByCriadoEmDesc(LocalDateTime agora);
     Optional<RecuperacaoSenha> findByTokenHashAndConcluidoEmIsNullAndExpiraEmAfter(String tokenHash, LocalDateTime agora);
